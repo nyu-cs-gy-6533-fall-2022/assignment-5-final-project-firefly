@@ -52,6 +52,11 @@ std::vector<glm::vec2> QUV(6);
 
 // Last position of the mouse on click
 double xpos, ypos;
+double lastX, lastY;
+double firstMouse = true;
+float mouse_sensitivity = 0.1f;
+float pitch = 0.f;
+float yaw = -90.f;
 
 // camera setup and matrix calculations
 glm::vec3 cameraPos;
@@ -63,7 +68,7 @@ glm::mat4 viewMatrix;
 glm::mat4 projMatrix;
 
 float camRadius = 5.0f;
-int task = 3;
+int task = 4;
 int width, height;
 
 // PPM Reader code from http://josiahmanson.com/prose/optimize_ppm/
@@ -342,6 +347,30 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
     }
 }
 
+void mouse_movement_callback(GLFWwindow *window)
+{
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = ypos - lastY;
+
+    lastX = xpos;
+    lastY = ypos;
+
+    yaw += xoffset * mouse_sensitivity;
+    pitch += yoffset * mouse_sensitivity;
+
+    pitch = glm::clamp(pitch, -89.f, 89.f);
+
+    cameraTarget.x = cameraTarget.x * cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+
+    cameraDirection = glm::normalize(cameraPos - cameraTarget);
+}
+
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     // temp variables
@@ -350,28 +379,37 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     switch (key)
     {
     case GLFW_KEY_A:
-        rot = glm::rotate(glm::mat4(1.0f), glm::radians(-5.0f), cameraUp);
-        cameraPos = rot * cameraPos;
+        // rot = glm::rotate(glm::mat4(1.0f), glm::radians(-5.0f), cameraUp);
+        // cameraPos = rot * cameraPos;
+        cameraTarget = cameraTarget + glm::vec3(-0.05, 0.0, 0.0);
         cameraDirection = glm::normalize(cameraPos - cameraTarget);
-        cameraRight = glm::normalize(glm::cross(cameraUp, cameraDirection));
+        // cameraRight = glm::normalize(glm::cross(cameraUp, cameraDirection));
+        // cameraDirection = cameraDirection + glm::vec3(0.1, 0.0, 0.0);
+        cameraPos = cameraPos + glm::vec3(-0.05, 0.0, 0.0);
         break;
     case GLFW_KEY_D:
-        rot = glm::rotate(glm::mat4(1.0f), glm::radians(5.0f), cameraUp);
-        cameraPos = rot * cameraPos;
+        cameraTarget = cameraTarget + glm::vec3(0.05, 0.0, 0.0);
         cameraDirection = glm::normalize(cameraPos - cameraTarget);
-        cameraRight = glm::normalize(glm::cross(cameraUp, cameraDirection));
+        cameraPos = cameraPos + glm::vec3(0.05, 0.0, 0.0);
         break;
     case GLFW_KEY_W:
-        rot = glm::rotate(glm::mat4(1.0f), glm::radians(-5.0f), cameraRight);
-        cameraPos = rot * cameraPos;
-        cameraDirection = glm::normalize(cameraPos - cameraTarget);
-        cameraUp = glm::normalize(glm::cross(cameraDirection, cameraRight));
+        // rot = glm::rotate(glm::mat4(1.0f), glm::radians(-5.0f), cameraRight);
+        cameraPos = cameraPos + glm::vec3(0.0, 0.0, -0.05f);
+        // cameraDirection = glm::normalize(cameraPos - cameraTarget);
+        // cameraUp = glm::normalize(glm::cross(cameraDirection, cameraRight));
         break;
     case GLFW_KEY_S:
-        rot = glm::rotate(glm::mat4(1.0f), glm::radians(5.0f), cameraRight);
-        cameraPos = rot * cameraPos;
+        cameraPos += glm::vec3(0.0, 0.0, 0.05f);
+        break;
+    case GLFW_KEY_SPACE:
+        cameraTarget = cameraTarget + glm::vec3(0.0, 0.05f, 0.0);
         cameraDirection = glm::normalize(cameraPos - cameraTarget);
-        cameraUp = glm::normalize(glm::cross(cameraDirection, cameraRight));
+        cameraPos += glm::vec3(0.0, 0.05f, 0.0f);
+        break;
+    case GLFW_KEY_LEFT_CONTROL:
+        cameraTarget = cameraTarget + glm::vec3(0.0, -0.05f, 0.0);
+        cameraDirection = glm::normalize(cameraPos - cameraTarget);
+        cameraPos += glm::vec3(0.0, -0.05f, 0.0f);
         break;
     case GLFW_KEY_UP:
         cameraPos -= cameraDirection * 0.25f;
@@ -417,6 +455,7 @@ int main(void)
 
     // Create a windowed mode window and its OpenGL context
     window = glfwCreateWindow(800, 600, "Hello OpenGL", NULL, NULL);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     if (!window)
     {
         glfwTerminate();
@@ -617,7 +656,6 @@ int main(void)
 
     // Register the mouse callback
     glfwSetMouseButtonCallback(window, mouse_button_callback);
-
     // // Update viewport
     // glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
