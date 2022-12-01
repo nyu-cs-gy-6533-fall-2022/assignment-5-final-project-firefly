@@ -2,6 +2,7 @@
 
 // OpenGL Helpers to reduce the clutter
 #include "Helpers.h"
+#include "Camera.h"
 
 #ifdef __APPLE__
 #define GL_SILENCE_DEPRECATION
@@ -52,24 +53,25 @@ std::vector<glm::vec2> QUV(6);
 
 // Last position of the mouse on click
 double xpos, ypos;
-double lastX, lastY;
-double firstMouse = true;
-float mouse_sensitivity = 0.1f;
-float pitch = 0.f;
-float yaw = -90.f;
+float lastX = 400, lastY = 300;
+bool firstMouse = true;
+float mouse_sensitivity = 0.05f;
 
 // camera setup and matrix calculations
-glm::vec3 cameraPos;
-glm::vec3 cameraTarget;
-glm::vec3 cameraDirection;
-glm::vec3 cameraUp;
-glm::vec3 cameraRight;
+Camera cam;
+
 glm::mat4 viewMatrix;
 glm::mat4 projMatrix;
 
 float camRadius = 5.0f;
-int task = 4;
+// int task = 4;
 int width, height;
+
+// smooth camera
+float deltaTime = 0.f;
+float lastFrame = 0.f;
+
+float movementSpd = 5.f;
 
 // PPM Reader code from http://josiahmanson.com/prose/optimize_ppm/
 
@@ -347,82 +349,74 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
     }
 }
 
-void mouse_movement_callback(GLFWwindow *window)
+void mouse_movement_callback(GLFWwindow *window, double xpos, double ypos)
 {
     if (firstMouse)
     {
         lastX = xpos;
         lastY = ypos;
+
+        firstMouse = false;
     }
 
     float xoffset = xpos - lastX;
-    float yoffset = ypos - lastY;
+    float yoffset = lastY - ypos;
 
     lastX = xpos;
     lastY = ypos;
 
-    yaw += xoffset * mouse_sensitivity;
-    pitch += yoffset * mouse_sensitivity;
+    cam.yaw += xoffset * mouse_sensitivity;
+    cam.pitch += yoffset * mouse_sensitivity;
 
-    pitch = glm::clamp(pitch, -89.f, 89.f);
+    cam.pitch = glm::clamp(cam.pitch, -89.f, 89.f);
 
-    cameraTarget.x = cameraTarget.x * cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-
-    cameraDirection = glm::normalize(cameraPos - cameraTarget);
+    glm::vec3 dir;
+    dir.x = cos(glm::radians(cam.yaw)) * cos(glm::radians(cam.pitch));
+    dir.y = sin(glm::radians(cam.pitch));
+    dir.z = sin(glm::radians(cam.yaw)) * cos(glm::radians(cam.pitch));
+    // std::cout << xpos;
+    // std::cout << xoffset << std::endl;
+    cam.cameraFront = glm::normalize(dir);
+    cam.cameraRight = glm::normalize(glm::cross(cam.upValue, cam.cameraFront));
 }
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     // temp variables
     glm::mat3 rot;
-    // Update the position of the first vertex if the keys 1,2, or 3 are pressed
     switch (key)
     {
     case GLFW_KEY_A:
-        // rot = glm::rotate(glm::mat4(1.0f), glm::radians(-5.0f), cameraUp);
-        // cameraPos = rot * cameraPos;
-        cameraTarget = cameraTarget + glm::vec3(-0.05, 0.0, 0.0);
-        cameraDirection = glm::normalize(cameraPos - cameraTarget);
-        // cameraRight = glm::normalize(glm::cross(cameraUp, cameraDirection));
-        // cameraDirection = cameraDirection + glm::vec3(0.1, 0.0, 0.0);
-        cameraPos = cameraPos + glm::vec3(-0.05, 0.0, 0.0);
+        cam.cameraPos += cam.cameraRight * movementSpd * deltaTime;
         break;
     case GLFW_KEY_D:
-        cameraTarget = cameraTarget + glm::vec3(0.05, 0.0, 0.0);
-        cameraDirection = glm::normalize(cameraPos - cameraTarget);
-        cameraPos = cameraPos + glm::vec3(0.05, 0.0, 0.0);
+        cam.cameraPos -= cam.cameraRight * movementSpd * deltaTime;
         break;
     case GLFW_KEY_W:
-        // rot = glm::rotate(glm::mat4(1.0f), glm::radians(-5.0f), cameraRight);
-        cameraPos = cameraPos + glm::vec3(0.0, 0.0, -0.05f);
-        // cameraDirection = glm::normalize(cameraPos - cameraTarget);
-        // cameraUp = glm::normalize(glm::cross(cameraDirection, cameraRight));
+        cam.cameraPos += cam.cameraFront * movementSpd * deltaTime;
         break;
     case GLFW_KEY_S:
-        cameraPos += glm::vec3(0.0, 0.0, 0.05f);
+        cam.cameraPos -= cam.cameraFront * movementSpd * deltaTime;
         break;
     case GLFW_KEY_SPACE:
-        cameraTarget = cameraTarget + glm::vec3(0.0, 0.05f, 0.0);
-        cameraDirection = glm::normalize(cameraPos - cameraTarget);
-        cameraPos += glm::vec3(0.0, 0.05f, 0.0f);
+        cam.cameraPos += glm::vec3(0.0, movementSpd * deltaTime, 0.0f);
         break;
     case GLFW_KEY_LEFT_CONTROL:
-        cameraTarget = cameraTarget + glm::vec3(0.0, -0.05f, 0.0);
-        cameraDirection = glm::normalize(cameraPos - cameraTarget);
-        cameraPos += glm::vec3(0.0, -0.05f, 0.0f);
+        cam.cameraPos += glm::vec3(0.0, -movementSpd * deltaTime, 0.0f);
         break;
     case GLFW_KEY_UP:
-        cameraPos -= cameraDirection * 0.25f;
+        cam.cameraPos -= cam.cameraDir * movementSpd * deltaTime;
         break;
     case GLFW_KEY_DOWN:
-        cameraPos += cameraDirection * 0.25f;
+        cam.cameraPos += cam.cameraDir * movementSpd * deltaTime;
         break;
     case GLFW_KEY_R:
-        cameraPos = glm::vec3(0.0f, 0.0f, camRadius);
-        cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-        cameraDirection = glm::normalize(cameraPos - cameraTarget);
-        cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-        cameraRight = glm::normalize(glm::cross(cameraUp, cameraDirection));
+        cam.cameraPos = glm::vec3(0.0f, 0.0f, camRadius);
+        cam.cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+        cam.cameraDir = glm::normalize(cam.cameraPos - cam.cameraTarget);
+        cam.cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+        cam.cameraFront = glm::vec3(0.0f, 0.f, -1.f);
+        cam.cameraRight = glm::normalize(glm::cross(cam.cameraUp, cam.cameraFront));
         break;
     case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, GL_TRUE);
@@ -455,7 +449,13 @@ int main(void)
 
     // Create a windowed mode window and its OpenGL context
     window = glfwCreateWindow(800, 600, "Hello OpenGL", NULL, NULL);
+
+    // take focus of cursor
+    glfwSetCursorPos(window, 400, 300);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // get cursorpos callback
+    glfwSetCursorPosCallback(window, mouse_movement_callback);
+
     if (!window)
     {
         glfwTerminate();
@@ -511,84 +511,54 @@ int main(void)
 
     // 1: generate sphere, 0: load OFF model
     GLuint tex;
-    if (task != 4)
+
+    // load  OFF file
+    glm::vec3 min,
+        max, tmpVec;
+    std::cout << "Loading OFF file...";
+    loadOFFFile("../data/stanford_dragon2.off", V, T, min, max);
+    // loadOFFFile("../data/bunny.off", V, T, min, max);
+    std::cout << " done! " << V.size() << " vertices, " << T.size() << " triangles" << std::endl;
+    VBO.update(V);
+    IndexBuffer.update(T);
+
+    // compute model matrix so that the mesh is inside a -1..1 cube
+    tmpVec = max - min;
+    float maxVal = glm::max(tmpVec.x, glm::max(tmpVec.y, tmpVec.z));
+    tmpVec /= 2.0f;
+    modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(3.0f / maxVal));
+    modelMatrix *= glm::translate(glm::mat4(1.0f), -(min + tmpVec));
+
+    // compute face normals
+    std::cout << "Computing face normals...";
+    std::vector<glm::vec3> faceN(3);
+    faceN.resize(T.size());
+    for (unsigned int i = 0; i < faceN.size(); i++)
     {
-        // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-        sphere(1.0f, 10, 20, V, VN, T);
-        VBO.update(V);
-        NBO.update(VN);
-        UVBO.update(UV);
-        IndexBuffer.update(T);
-
-        // load PPM image file
-        ImageRGB image;
-        bool imageAvailable = loadPPM(image, "../data/land_shallow_topo_2048.ppm");
-        // textures are read from bottom left, so inverse to fit that
-        std::reverse(image.data.begin(), image.data.end());
-
-        // setup original texture for sphere
-        glGenTextures(1, &tex);
-        glBindTexture(GL_TEXTURE_2D, tex);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.w, image.h, 0, GL_RGB, GL_UNSIGNED_BYTE, image.data.data());
-        // glBindTexture(GL_TEXTURE_2D, 0); // unbind texture
-        // glDeleteTextures(1, &tex);
+        faceN[i] = glm::normalize(glm::cross(V[T[i].y] - V[T[i].x], V[T[i].z] - V[T[i].x]));
     }
-    else
+    std::cout << " done!" << std::endl;
+    // compute vertex normals
+    std::cout << "Computing vertex normals...";
+    VN.resize(V.size());
+    for (unsigned int i = 0; i < VN.size(); i++)
     {
-        // load  OFF file
-        glm::vec3 min,
-            max, tmpVec;
-        std::cout << "Loading OFF file...";
-        loadOFFFile("../data/stanford_dragon2.off", V, T, min, max);
-        // loadOFFFile("../data/bunny.off", V, T, min, max);
-        std::cout << " done! " << V.size() << " vertices, " << T.size() << " triangles" << std::endl;
-        VBO.update(V);
-        IndexBuffer.update(T);
-
-        // compute model matrix so that the mesh is inside a -1..1 cube
-        tmpVec = max - min;
-        float maxVal = glm::max(tmpVec.x, glm::max(tmpVec.y, tmpVec.z));
-        tmpVec /= 2.0f;
-        modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(3.0f / maxVal));
-        modelMatrix *= glm::translate(glm::mat4(1.0f), -(min + tmpVec));
-
-        // compute face normals
-        std::cout << "Computing face normals...";
-        std::vector<glm::vec3> faceN(3);
-        faceN.resize(T.size());
-        for (unsigned int i = 0; i < faceN.size(); i++)
-        {
-            faceN[i] = glm::normalize(glm::cross(V[T[i].y] - V[T[i].x], V[T[i].z] - V[T[i].x]));
-        }
-        std::cout << " done!" << std::endl;
-        // compute vertex normals
-        std::cout << "Computing vertex normals...";
-        VN.resize(V.size());
-        for (unsigned int i = 0; i < VN.size(); i++)
-        {
-            VN[i] = glm::vec3(0.0f);
-        }
-        for (unsigned int j = 0; j < T.size(); j++)
-        {
-            VN[T[j].x] += faceN[j];
-            VN[T[j].y] += faceN[j];
-            VN[T[j].z] += faceN[j];
-        }
-        for (unsigned int i = 0; i < VN.size(); i++)
-        {
-            VN[i] = glm::normalize(VN[i]);
-        }
-        std::cout << " done!" << std::endl;
-        // initialize normal array buffer
-        NBO.init();
-        NBO.update(VN);
+        VN[i] = glm::vec3(0.0f);
     }
+    for (unsigned int j = 0; j < T.size(); j++)
+    {
+        VN[T[j].x] += faceN[j];
+        VN[T[j].y] += faceN[j];
+        VN[T[j].z] += faceN[j];
+    }
+    for (unsigned int i = 0; i < VN.size(); i++)
+    {
+        VN[i] = glm::normalize(VN[i]);
+    }
+    std::cout << " done!" << std::endl;
+    // initialize normal array buffer
+    NBO.init();
+    NBO.update(VN);
 
     // Initialize the OpenGL Program
     // A program controls the OpenGL pipeline and it must contains
@@ -598,58 +568,33 @@ int main(void)
     std::stringstream screenvertCode;
     std::stringstream fragCode;
     std::stringstream vertCode;
-    if (task == 1)
-    {
-        // load fragment shader file
-        std::ifstream fragShaderFile("../shader/fragment.glsl");
 
-        fragCode << fragShaderFile.rdbuf();
-        // load vertex shader file
-        std::ifstream vertShaderFile("../shader/vertex.glsl");
+    std::ifstream fragShaderFile("../shader/fragment.glsl");
 
-        vertCode << vertShaderFile.rdbuf();
-        // Compile the two shaders and upload the binary to the GPU
-        // Note that we have to explicitly specify that the output "slot" called outColor
-        // is the one that we want in the fragment buffer (and thus on screen)
-        program.init(vertCode.str(), fragCode.str(), "outColor");
-        program.bind();
-    }
-    else if (task == 2 || task == 3 || task == 4)
-    {
-        std::ifstream fragShaderFile("../shader/fragment.glsl");
+    fragCode << fragShaderFile.rdbuf();
+    // load vertex shader file
+    std::ifstream vertShaderFile("../shader/vertex.glsl");
 
-        fragCode << fragShaderFile.rdbuf();
-        // load vertex shader file
-        std::ifstream vertShaderFile("../shader/vertex.glsl");
+    vertCode << vertShaderFile.rdbuf();
+    // Compile the two shaders and upload the binary to the GPU
+    // Note that we have to explicitly specify that the output "slot" called outColor
+    // is the one that we want in the fragment buffer (and thus on screen)
+    program.init(vertCode.str(), fragCode.str(), "outColor");
+    program.bind();
+    // load fragment shader file
+    std::ifstream fragShaderFile2("../shader/rendtexFragment.glsl");
 
-        vertCode << vertShaderFile.rdbuf();
-        // Compile the two shaders and upload the binary to the GPU
-        // Note that we have to explicitly specify that the output "slot" called outColor
-        // is the one that we want in the fragment buffer (and thus on screen)
-        program.init(vertCode.str(), fragCode.str(), "outColor");
-        program.bind();
-        // load fragment shader file
-        std::ifstream fragShaderFile2("../shader/rendtexFragment.glsl");
+    screenfragCode << fragShaderFile2.rdbuf();
+    // load vertex shader file
+    std::ifstream vertShaderFile2("../shader/rendtexVertex.glsl");
 
-        screenfragCode << fragShaderFile2.rdbuf();
-        // load vertex shader file
-        std::ifstream vertShaderFile2("../shader/rendtexVertex.glsl");
-
-        screenvertCode << vertShaderFile2.rdbuf();
-        // Compile the two shaders and upload the binary to the GPU
-        // Note that we have to explicitly specify that the output "slot" called outColor
-        // is the one that we want in the fragment buffer (and thus on screen)
-        // program.init(screenvertCode.str(), screenfragCode.str(), "outColor");
-        // program.bind();
-    }
+    screenvertCode << vertShaderFile2.rdbuf();
 
     // bind vertex buffer objects to the shader
     program.bindVertexAttribArray("position", VBO);
     program.bindVertexAttribArray("normal", NBO);
-    if (task != 4)
-    {
-        program.bindVertexAttribArray("UV", UVBO);
-    }
+
+    program.bindVertexAttribArray("UV", UVBO);
 
     // Register the keyboard callback
     glfwSetKeyCallback(window, key_callback);
@@ -659,16 +604,9 @@ int main(void)
     // // Update viewport
     // glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // camera setup
-    cameraPos = glm::vec3(0.0f, 0.0f, camRadius);
-    cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-    cameraDirection = glm::normalize(cameraPos - cameraTarget);
-    cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    cameraRight = glm::normalize(glm::cross(cameraUp, cameraDirection));
-
     program.init(screenvertCode.str(), screenfragCode.str(), "outColor");
     program.bind();
-    glUniform1i(program.uniform("task"), task);
+    // glUniform1i(program.uniform("task"), task);
 
     // setup quad for render to texture
     glBindVertexArray(0);
@@ -723,62 +661,59 @@ int main(void)
     GLuint TBO_norm;
     GLuint TBO_pos;
 
-    if (task == 2 || task == 3 || task == 4) // setup textures to render to
+    // color texture
+    glGenTextures(1, &TBO_color);
+    glBindTexture(GL_TEXTURE_2D, TBO_color);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, TBO_color, 0);
+
+    // normal texture
+    glGenTextures(1, &TBO_norm);
+    glBindTexture(GL_TEXTURE_2D, TBO_norm);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, NULL);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, TBO_norm, 0);
+
+    // position texture
+    glGenTextures(1, &TBO_pos);
+    glBindTexture(GL_TEXTURE_2D, TBO_pos);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, NULL);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, TBO_pos, 0);
+
+    // depth texture
+    glGenTextures(1, &TBO_depth);
+    glBindTexture(GL_TEXTURE_2D, TBO_depth);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+
+    // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, TBO_depth, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, TBO_depth, 0);
+
+    GLenum DrawBuffers[4] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3};
+    glDrawBuffers(4, DrawBuffers); // "1" is the size of DrawBuffers
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
     {
-        // color texture
-        glGenTextures(1, &TBO_color);
-        glBindTexture(GL_TEXTURE_2D, TBO_color);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, TBO_color, 0);
-
-        // normal texture
-        glGenTextures(1, &TBO_norm);
-        glBindTexture(GL_TEXTURE_2D, TBO_norm);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, NULL);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, TBO_norm, 0);
-
-        // position texture
-        glGenTextures(1, &TBO_pos);
-        glBindTexture(GL_TEXTURE_2D, TBO_pos);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, NULL);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, TBO_pos, 0);
-
-        // depth texture
-        glGenTextures(1, &TBO_depth);
-        glBindTexture(GL_TEXTURE_2D, TBO_depth);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
-
-        // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, TBO_depth, 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, TBO_depth, 0);
-
-        GLenum DrawBuffers[4] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3};
-        glDrawBuffers(4, DrawBuffers); // "1" is the size of DrawBuffers
-
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        {
-            std::cout << glCheckFramebufferStatus(GL_FRAMEBUFFER) << std::endl;
-            return false;
-        }
+        std::cout << glCheckFramebufferStatus(GL_FRAMEBUFFER) << std::endl;
+        return false;
     }
 
     // GLuint DBO;
@@ -798,37 +733,27 @@ int main(void)
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(window))
     {
-        // Get the size of the window
+        // smooth camera operations
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
 
         // matrix calculations
-        viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
+        viewMatrix = glm::lookAt(cam.cameraPos, cam.cameraPos + cam.cameraFront, cam.cameraUp);
         projMatrix = glm::perspective(glm::radians(35.0f), (float)width / (float)height, 0.1f, 100.0f);
 
         // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        if (task == 2 || task == 3)
-        {
-            glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-            // glDrawBuffer(GL_COLOR_ATTACHMENT0);
-            glBindTexture(GL_TEXTURE_2D, tex);
-        }
-        else if (task == 4)
-        {
-            glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+
         // }
         VAO.bind();
         // Bind your program
         defaultShader.bind();
-        glUniform1i(defaultShader.uniform("task"), task);
+        // glUniform1i(defaultShader.uniform("task"), task);
         // Clear the framebuffer
-        if (task == 3 || task == 4)
-        {
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        }
-        else
-        {
-            glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-        }
+
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -842,7 +767,7 @@ int main(void)
         // Set the uniform values
         // glUniform3f(program.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
         glUniform3f(defaultShader.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
-        glUniform3f(defaultShader.uniform("camPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+        glUniform3f(defaultShader.uniform("camPos"), cam.cameraPos.x, cam.cameraPos.y, cam.cameraPos.z);
         glUniformMatrix4fv(defaultShader.uniform("modelMatrix"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
         glUniformMatrix4fv(defaultShader.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
         glUniformMatrix4fv(defaultShader.uniform("projMatrix"), 1, GL_FALSE, glm::value_ptr(projMatrix));
@@ -856,66 +781,52 @@ int main(void)
         glDrawElements(GL_TRIANGLES, T.size() * 3, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
-        if (task == 2 || task == 3 || task == 4)
-        {
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            // Clear the framebuffer
-            if (task == 3 || task == 4)
-            {
-                glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            }
-            else
-            {
-                glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-            }
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        // Clear the framebuffer
 
-            // program.init(screenvertCode.str(), screenfragCode.str(), "outColor");
-            program.bind();
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-            glUniform3f(program.uniform("camPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-            glUniformMatrix4fv(program.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
-            glUniform3f(program.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
-            // direction towards the light
-            glUniform3fv(program.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, 3.0f)));
-            // x: ambient;
-            glUniform3f(program.uniform("lightParams"), 0.1f, 50.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            QAO.bind();
+        // program.init(screenvertCode.str(), screenfragCode.str(), "outColor");
+        program.bind();
 
-            glDisable(GL_DEPTH_TEST);
-            // glEnable(GL_DEPTH_TEST);
+        glUniform3f(program.uniform("camPos"), cam.cameraPos.x, cam.cameraPos.y, cam.cameraPos.z);
+        glUniformMatrix4fv(program.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+        glUniform3f(program.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
+        // direction towards the light
+        glUniform3fv(program.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, 3.0f)));
+        // x: ambient;
+        glUniform3f(program.uniform("lightParams"), 0.1f, 50.0f, 0.0f);
 
-            // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        QAO.bind();
 
-            if (task == 2)
-            {
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, TBO_color);
-                glUniform1i(program.uniform("texColor"), 0);
-            }
-            else if (task == 3 || task == 4)
-            { // bind all active textures
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, TBO_color);
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, TBO_norm);
-                glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, TBO_pos);
-                glActiveTexture(GL_TEXTURE3);
-                glBindTexture(GL_TEXTURE_2D, TBO_depth);
+        glDisable(GL_DEPTH_TEST);
+        // glEnable(GL_DEPTH_TEST);
 
-                // connect sampler2D uniforms to which texture unit
-                glUniform1i(program.uniform("texColor"), 0);
-                glUniform1i(program.uniform("texNorm"), 1);
-                glUniform1i(program.uniform("texPos"), 2);
-                glUniform1i(program.uniform("texDepth"), 3);
-                glActiveTexture(GL_TEXTURE0);
-            }
+        // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-            glDrawArrays(GL_TRIANGLES, 0, Q.size());
-            // }
-        }
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, TBO_color);
+        glUniform1i(program.uniform("texColor"), 0);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, TBO_color);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, TBO_norm);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, TBO_pos);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, TBO_depth);
+
+        // connect sampler2D uniforms to which texture unit
+        glUniform1i(program.uniform("texColor"), 0);
+        glUniform1i(program.uniform("texNorm"), 1);
+        glUniform1i(program.uniform("texPos"), 2);
+        glUniform1i(program.uniform("texDepth"), 3);
+        glActiveTexture(GL_TEXTURE0);
+
+        glDrawArrays(GL_TRIANGLES, 0, Q.size());
 
         // Swap front and back buffers
         glfwSwapBuffers(window);

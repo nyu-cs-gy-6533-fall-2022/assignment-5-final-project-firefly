@@ -43,14 +43,14 @@ public:
         cameraTarget = target;
         cameraFront = front;
         cameraDir = normalize(position - target);
-        cameraRight = normalize(cross(up, cameraDir));
+        cameraRight = normalize(cross(up, cameraFront));
         upValue = up;
-        cameraUp = cross(cameraDir, cameraRight);
+        cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
         view = lookAt(cameraPos, cameraTarget, up);
         fov = fieldOfView;
         nearValue = nearVal;
         farValue = farVal;
-        yaw = 90.f;
+        yaw = -90.f;
         pitch = 0.f;
     };
 
