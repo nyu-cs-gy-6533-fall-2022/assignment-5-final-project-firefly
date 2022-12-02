@@ -1,4 +1,4 @@
-#version 150 core
+#version 330
 
 uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
@@ -17,7 +17,8 @@ in vec2 QUV;
 in vec2 qVert;
 
 out vec3 n;
-out vec3 color;
+flat out vec3 color;
+// out vec3 color;
 out vec3 pos;
 out vec2 texCoord;
 out vec3 norms;
@@ -26,14 +27,25 @@ out vec2 qvert;
 out vec4 glpos;
 
 void main()
-{
+{       
+        //low poly coloring
+
         n = mat3(transpose(inverse(modelMatrix))) * normal;
-        color = triangleColor;
+
+        vec3 col = triangleColor;
+        vec3 normal = normalize(n);
+        vec3 lightDir = normalize(lightPos -vec3(modelMatrix * vec4(position, 1.0)));
+        col = clamp( col * lightParams.x + 
+        col * max(0.0, dot(normal, lightDir)) + 
+        vec3(1.0) * pow(max(0.0, dot( normalize(camPos - vec3(modelMatrix * vec4(position, 1.0))), normalize( reflect(-lightDir, normal)))), lightParams.y),
+        0.0, 1.0);
+
+        color = col;
         pos = vec3(modelMatrix * vec4(position, 1.0));
         gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
         norms = normal;
 
-        glpos =  projMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+        // glpos =  projMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
 
         texCoord = UV;
 

@@ -41,13 +41,13 @@ BufferObject QVBO;
 BufferObject QUVBO;
 
 // Contains the vertex positions
-std::vector<glm::vec3> V(3);
+std::vector<glm::vec3> V(0);
 // Contains the vertex positions
-std::vector<glm::vec3> VN(3);
+std::vector<glm::vec3> VN(0);
 // Contains the vertex positions
 std::vector<glm::vec2> UV(0);
 // Contains the vertex positions
-std::vector<glm::ivec3> T(3);
+std::vector<glm::ivec3> T(0);
 std::vector<glm::vec2> Q(6);
 std::vector<glm::vec2> QUV(6);
 
@@ -63,7 +63,7 @@ Camera cam;
 glm::mat4 viewMatrix;
 glm::mat4 projMatrix;
 
-float camRadius = 5.0f;
+// float camRadius = 5.0f;
 // int task = 4;
 int width, height;
 
@@ -71,7 +71,7 @@ int width, height;
 float deltaTime = 0.f;
 float lastFrame = 0.f;
 
-float movementSpd = 5.f;
+float movementSpd = 4.f;
 
 // PPM Reader code from http://josiahmanson.com/prose/optimize_ppm/
 
@@ -265,8 +265,8 @@ bool loadOFFFile(std::string filename, std::vector<glm::vec3> &vertex, std::vect
 void sphere(float sphereRadius, int sectorCount, int stackCount, std::vector<glm::vec3> &vertex, std::vector<glm::vec3> &normal, std::vector<glm::ivec3> &tria)
 {
     // init variables
-    vertex.resize(0);
-    normal.resize(0);
+    // vertex.resize(0);
+    // normal.resize(0);
     tria.resize(0);
     // temp variables
     glm::vec3 sphereVertexPos;
@@ -327,6 +327,72 @@ void sphere(float sphereRadius, int sectorCount, int stackCount, std::vector<glm
             }
         }
     }
+}
+
+void terrain(float freq, int cols, int rows, int width, int height, std::vector<glm::vec3> &vertex, std::vector<glm::vec3> &normal)
+{
+    vertex.resize(0);
+    normal.resize(0);
+    // create terrain plane vertices
+    float colSec = width / cols;
+    float rowSec = height / rows;
+    for (int r = 0; r <= rows; r++)
+    {
+        for (int c = 0; c <= cols; c++)
+        {
+            vertex.push_back(glm::vec3((float)c * colSec / (float)width, -0.08f, -(float)r * rowSec / (float)height));
+            // normal.push_back
+            UV.push_back(glm::vec2((float)c / (float)cols, (float)r / (float)rows));
+            // std::cout << vertex[vertex.size() - 1].x << std::endl;
+        }
+    }
+    vertex[222] += glm::vec3(0.f, 0.1f, 0.f);
+
+    // create terrain plane triangles index buffer
+    int k1, k2;
+
+    for (int i = 0; i < rows; ++i)
+    {
+        k1 = i * (cols + 1);
+        k2 = k1 + cols + 1;
+
+        for (int j = 0; j < cols; ++j, ++k1, ++k2)
+        {
+            // 2 triangles per sector excluding first and last stacks
+            // k1 => k2 => k1+1
+
+            T.push_back(glm::ivec3(k2, k1 + 1, k1));
+
+            T.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+        }
+    }
+
+    normal.resize(T.size());
+    // calculate surface normals
+    for (int i = 0; i < T.size(); i++)
+    {
+        glm::vec3 u = vertex[T[i].y] - vertex[T[i].x];
+        glm::vec3 v = vertex[T[i].z] - vertex[T[i].x];
+
+        normal[T[i].x] += glm::vec3(u.y * v.z - u.z * v.y, -(u.z * v.x - u.x * v.z), u.x * v.y - u.y * v.x);
+        normal[T[i].y] += glm::vec3(u.y * v.z - u.z * v.y, -(u.z * v.x - u.x * v.z), u.x * v.y - u.y * v.x);
+        normal[T[i].z] += glm::vec3(u.y * v.z - u.z * v.y, -(u.z * v.x - u.x * v.z), u.x * v.y - u.y * v.x);
+
+        // normal[T[i].x] += glm::normalize(glm::cross(V[T[i].y] - V[T[i].x], V[T[i].z] - V[T[i].x]));
+
+        // normal[T[i].y] += glm::normalize(glm::cross(V[T[i].y] - V[T[i].x], V[T[i].z] - V[T[i].x]));
+
+        // normal[T[i].z] += glm::normalize(glm::cross(V[T[i].y] - V[T[i].x], V[T[i].z] - V[T[i].x]));
+    }
+
+    for (int i = 0; i < normal.size(); i++)
+    {
+        normal[i] = glm::normalize(normal[i]);
+    }
+
+    std::cout << normal[222].x << std::endl;
+    std::cout << normal[222].y << std::endl;
+    std::cout << normal[222].z << std::endl;
 }
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
@@ -411,12 +477,15 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         cam.cameraPos += cam.cameraDir * movementSpd * deltaTime;
         break;
     case GLFW_KEY_R:
-        cam.cameraPos = glm::vec3(0.0f, 0.0f, camRadius);
+        // cam.cameraPos = glm::vec3(0.0f, 0.0f, camRadius);
+        cam.cameraPos = glm::vec3(0.5f, 0.f, 0.f);
         cam.cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
         cam.cameraDir = glm::normalize(cam.cameraPos - cam.cameraTarget);
         cam.cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
         cam.cameraFront = glm::vec3(0.0f, 0.f, -1.f);
-        cam.cameraRight = glm::normalize(glm::cross(cam.cameraUp, cam.cameraFront));
+        cam.cameraRight = glm::normalize(glm::cross(cam.upValue, cam.cameraFront));
+        cam.yaw = -90.f;
+        cam.pitch = 0.f;
         break;
     case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, GL_TRUE);
@@ -506,59 +575,23 @@ int main(void)
     IndexBuffer.init(GL_ELEMENT_ARRAY_BUFFER);
     // initialize model matrix
     glm::mat4 modelMatrix = glm::mat4(1.0f);
-    modelMatrix = glm::rotate(modelMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
+    // modelMatrix = glm::rotate(modelMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
     // modelMatrix = glm::rotate(modelMatrix, glm::radians(-90.f), glm::vec3(0, 1, 0));
 
     // 1: generate sphere, 0: load OFF model
     GLuint tex;
 
-    // load  OFF file
-    glm::vec3 min,
-        max, tmpVec;
-    std::cout << "Loading OFF file...";
-    loadOFFFile("../data/stanford_dragon2.off", V, T, min, max);
-    // loadOFFFile("../data/bunny.off", V, T, min, max);
-    std::cout << " done! " << V.size() << " vertices, " << T.size() << " triangles" << std::endl;
+    // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
+    // sphere(1.0f, 10, 20, V, VN, T);
+    // sphere(1.5f, 10, 20, V, VN, T);
+
+    terrain(0.f, 20, 20, 500, 500, V, VN);
+
+    // std::cout << V[10].x << std::endl;
     VBO.update(V);
-    IndexBuffer.update(T);
-
-    // compute model matrix so that the mesh is inside a -1..1 cube
-    tmpVec = max - min;
-    float maxVal = glm::max(tmpVec.x, glm::max(tmpVec.y, tmpVec.z));
-    tmpVec /= 2.0f;
-    modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(3.0f / maxVal));
-    modelMatrix *= glm::translate(glm::mat4(1.0f), -(min + tmpVec));
-
-    // compute face normals
-    std::cout << "Computing face normals...";
-    std::vector<glm::vec3> faceN(3);
-    faceN.resize(T.size());
-    for (unsigned int i = 0; i < faceN.size(); i++)
-    {
-        faceN[i] = glm::normalize(glm::cross(V[T[i].y] - V[T[i].x], V[T[i].z] - V[T[i].x]));
-    }
-    std::cout << " done!" << std::endl;
-    // compute vertex normals
-    std::cout << "Computing vertex normals...";
-    VN.resize(V.size());
-    for (unsigned int i = 0; i < VN.size(); i++)
-    {
-        VN[i] = glm::vec3(0.0f);
-    }
-    for (unsigned int j = 0; j < T.size(); j++)
-    {
-        VN[T[j].x] += faceN[j];
-        VN[T[j].y] += faceN[j];
-        VN[T[j].z] += faceN[j];
-    }
-    for (unsigned int i = 0; i < VN.size(); i++)
-    {
-        VN[i] = glm::normalize(VN[i]);
-    }
-    std::cout << " done!" << std::endl;
-    // initialize normal array buffer
-    NBO.init();
     NBO.update(VN);
+    UVBO.update(UV);
+    IndexBuffer.update(T);
 
     // Initialize the OpenGL Program
     // A program controls the OpenGL pipeline and it must contains
@@ -585,7 +618,7 @@ int main(void)
     std::ifstream fragShaderFile2("../shader/rendtexFragment.glsl");
 
     screenfragCode << fragShaderFile2.rdbuf();
-    // load vertex shader file
+    // // load vertex shader file
     std::ifstream vertShaderFile2("../shader/rendtexVertex.glsl");
 
     screenvertCode << vertShaderFile2.rdbuf();
@@ -595,6 +628,7 @@ int main(void)
     program.bindVertexAttribArray("normal", NBO);
 
     program.bindVertexAttribArray("UV", UVBO);
+    // glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
 
     // Register the keyboard callback
     glfwSetKeyCallback(window, key_callback);
@@ -716,13 +750,6 @@ int main(void)
         return false;
     }
 
-    // GLuint DBO;
-    // glGenRenderbuffers(1, &DBO);
-    // glBindRenderbuffer(GL_RENDERBUFFER, DBO);
-    // glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
-    // glBindRenderbuffer(GL_RENDERBUFFER, 0);
-    // glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, DBO);
-
     // Set the list of draw buffers.
     // 0: color, 1: norm, 2: position
 
@@ -737,6 +764,7 @@ int main(void)
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+        // std::cout << deltaTime << std::endl;
 
         // matrix calculations
         viewMatrix = glm::lookAt(cam.cameraPos, cam.cameraPos + cam.cameraFront, cam.cameraUp);
@@ -750,10 +778,10 @@ int main(void)
         VAO.bind();
         // Bind your program
         defaultShader.bind();
-        // glUniform1i(defaultShader.uniform("task"), task);
+        // glUniform1i(program.uniform("task"), task);
         // Clear the framebuffer
 
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -778,17 +806,18 @@ int main(void)
 
         // // Draw a triangle
         // glDrawArrays(GL_TRIANGLES, 0, V.size());
+        // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDrawElements(GL_TRIANGLES, T.size() * 3, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         // Clear the framebuffer
 
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // program.init(screenvertCode.str(), screenfragCode.str(), "outColor");
+        // // program.init(screenvertCode.str(), screenfragCode.str(), "outColor");
         program.bind();
 
         glUniform3f(program.uniform("camPos"), cam.cameraPos.x, cam.cameraPos.y, cam.cameraPos.z);
@@ -810,21 +839,21 @@ int main(void)
         glBindTexture(GL_TEXTURE_2D, TBO_color);
         glUniform1i(program.uniform("texColor"), 0);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, TBO_color);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, TBO_norm);
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, TBO_pos);
-        glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_2D, TBO_depth);
+        // glActiveTexture(GL_TEXTURE0);
+        // glBindTexture(GL_TEXTURE_2D, TBO_color);
+        // glActiveTexture(GL_TEXTURE1);
+        // glBindTexture(GL_TEXTURE_2D, TBO_norm);
+        // glActiveTexture(GL_TEXTURE2);
+        // glBindTexture(GL_TEXTURE_2D, TBO_pos);
+        // glActiveTexture(GL_TEXTURE3);
+        // glBindTexture(GL_TEXTURE_2D, TBO_depth);
 
-        // connect sampler2D uniforms to which texture unit
-        glUniform1i(program.uniform("texColor"), 0);
-        glUniform1i(program.uniform("texNorm"), 1);
-        glUniform1i(program.uniform("texPos"), 2);
-        glUniform1i(program.uniform("texDepth"), 3);
-        glActiveTexture(GL_TEXTURE0);
+        // // connect sampler2D uniforms to which texture unit
+        // glUniform1i(program.uniform("texColor"), 0);
+        // glUniform1i(program.uniform("texNorm"), 1);
+        // glUniform1i(program.uniform("texPos"), 2);
+        // glUniform1i(program.uniform("texDepth"), 3);
+        // glActiveTexture(GL_TEXTURE0);
 
         glDrawArrays(GL_TRIANGLES, 0, Q.size());
 
