@@ -412,7 +412,7 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
             double ny = (double)c * colSec / width - 0.5;
             // float perlinSum = -0.8f;
 
-            float perlinSum = (glm::perlin(glm::vec2(nx * freq, ny * freq)) + glm::perlin(glm::vec2(nx * freq * 3.f, ny * freq / 3.f)));
+            float perlinSum = (glm::perlin(glm::vec2(nx * freq, ny * freq)) + glm::perlin(glm::vec2(nx * freq * 3.f, ny * freq / 3.f)) / 2.f);
 
             vertex.push_back(glm::vec3((float)c * colSec / (float)width, glm::clamp((float)perlinSum + 0.5f, 0.1f, 5.f), (float)r * rowSec / (float)height));
             // normal.push_back
@@ -968,9 +968,12 @@ int main(void)
     // modelMatrix = glm::rotate(modelMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
     // modelMatrix = glm::rotate(modelMatrix, glm::radians(-90.f), glm::vec3(0, 1, 0));
 
+    int tempFlies = numFlies;
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(window))
     {
+
+        numFlies = tempFlies;
         // smooth camera operations
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -1050,6 +1053,7 @@ int main(void)
 
                 float speed_reduction = 200000.f;
                 // float altSign = (cosf(currentFrame) > 0) - (cosf(currentFrame) < 0);
+
                 if (translations_spheres[(int)i].y >= 0.f)
                 {
                     spheres_vectors[(int)i] = glm::vec3(spheres_vectors[(int)i].x + (((float)rand() / (float)RAND_MAX) - 0.5f) / speed_reduction, spheres_vectors[(int)i].y + (((float)rand() / (float)RAND_MAX) - 0.5f) / (speed_reduction), spheres_vectors[(int)i].z + (((float)rand() / (float)RAND_MAX) - 0.5f) / speed_reduction);
@@ -1061,6 +1065,12 @@ int main(void)
                     spheres_vectors[(int)i] = glm::vec3(0.f);
                 }
 
+                // std::cout << glm::distance(translations_spheres[(int)i], cam.cameraPos) << std::endl;
+                if (glm::distance(translations_spheres[(int)i], cam.cameraPos) > 10.f)
+                {
+                    numFlies = 0;
+                    break;
+                }
                 // std::cout << spheres_vectors[(int)i].x << std::endl;
                 // std::cout << (2 * ((float)rand() / (float)RAND_MAX) - 1.f) << std::endl;
                 glUniform3fv(program_firefly.uniform("offsets[" + std::to_string(i) + "]"), 1, glm::value_ptr(translations_spheres[(int)i]));
