@@ -1049,7 +1049,7 @@ int main(void)
             // glUniform1i(program_firefly.uniform("numFlies"), randInt);
             float randFloat = (2 * ((float)rand() / (float)RAND_MAX) - 1.f) / 100.f;
 
-            float closestSnow = 0.f;
+            float closestSnow = 999999999.f;
             for (unsigned int i = 0; i < numFlies; i++)
             {
 
@@ -1068,7 +1068,7 @@ int main(void)
                 }
 
                 // std::cout << glm::distance(translations_spheres[(int)i], cam.cameraPos) << std::endl;
-                float distanceToSnow = glm::distance(translations_spheres[(int)i], cam.cameraPos);
+                float distanceToSnow = glm::distance(cam.cameraPos, translations_spheres[(int)i]);
                 if (distanceToSnow < closestSnow)
                 {
                     closestSnow = distanceToSnow;
@@ -1078,10 +1078,11 @@ int main(void)
                 glUniform3fv(program_firefly.uniform("offsets[" + std::to_string(i) + "]"), 1, glm::value_ptr(translations_spheres[(int)i]));
             }
 
-            if (closestSnow > 7.f)
+            if (closestSnow > 4.f) // if distance from closest snow to camera is >4.f then stop rendering
             {
                 numFlies = 0;
             }
+            std::cout << closestSnow << std::endl;
             IndexBuffer_sphere.bind();
             // modelMatrix_sphere = glm::translate(glm::mat4(1.0f), glm::vec3(sinf(currentFrame) * 0.1f, 1.f, cosf(currentFrame) * 0.1f));
             modelMatrix_sphere = glm::translate(glm::mat4(1.0f), glm::vec3(0.f, 0.f, 0.f));
