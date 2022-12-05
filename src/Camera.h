@@ -37,7 +37,7 @@ public:
     float farValue;
     vec3 upValue;
 
-    Camera(vec3 position = vec3(0.5f, 0.f, 0.f), vec3 up = vec3(0.f, 1.f, 0.f), vec3 target = vec3(0.f, 0.f, 0.f), vec3 front = vec3(0.f, 0.f, -1.f), float fieldOfView = 35.f, float nearVal = 0.1f, float farVal = 100.f)
+    Camera(vec3 position = vec3(0.5f, 0.7f, 0.2f), vec3 up = vec3(0.f, 1.f, 0.f), vec3 target = vec3(0.f, 0.f, 0.f), vec3 front = vec3(0.f, 0.f, 1.f), float fieldOfView = 35.f, float nearVal = 0.1f, float farVal = 100.f)
     {
         cameraPos = position;
         cameraTarget = target;
@@ -50,7 +50,7 @@ public:
         fov = fieldOfView;
         nearValue = nearVal;
         farValue = farVal;
-        yaw = -90.f;
+        yaw = 90.f;
         pitch = 0.f;
     };
 

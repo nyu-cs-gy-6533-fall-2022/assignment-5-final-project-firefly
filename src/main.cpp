@@ -20,23 +20,38 @@
 #include <glm/mat4x4.hpp>               // glm::mat4
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/noise.hpp>
 
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <time.h>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
 
 // VertexBufferObject wrapper
-BufferObject VBO;
+BufferObject VBO_terrain;
 // VertexBufferObject wrapper
-BufferObject NBO;
+BufferObject NBO_terrain;
 // VertexBufferObject wrapper
-BufferObject UVBO;
+BufferObject UVBO_terrain;
 // VertexBufferObject wrapper
-BufferObject IndexBuffer;
+BufferObject IndexBuffer_terrain;
+
+// VertexBufferObject wrapper
+BufferObject VBO_sphere;
+// VertexBufferObject wrapper
+BufferObject NBO_sphere;
+// VertexBufferObject wrapper
+BufferObject UVBO_sphere;
+// VertexBufferObject wrapper
+BufferObject IndexBuffer_sphere;
+
+// height map buffer object
+BufferObject HMBO;
+
 BufferObject QVBO;
 BufferObject QUVBO;
 
@@ -46,10 +61,17 @@ std::vector<glm::vec3> V(0);
 std::vector<glm::vec3> VN(0);
 // Contains the vertex positions
 std::vector<glm::vec2> UV(0);
-// Contains the vertex positions
-std::vector<glm::ivec3> T(0);
+// Contains the vertex indices
+std::vector<glm::ivec3> T_terrain(0);
+std::vector<glm::ivec3> T_sphere(0);
+std::vector<glm::ivec3> T_model(0);
 std::vector<glm::vec2> Q(6);
 std::vector<glm::vec2> QUV(6);
+std::vector<glm::vec3> HM(0);
+
+// terrain texture
+// std::vector<glm::vec3> pixels(0);
+std::vector<glm::vec3> pixels(0);
 
 // Last position of the mouse on click
 double xpos, ypos;
@@ -234,7 +256,7 @@ bool loadOFFFile(std::string filename, std::vector<glm::vec3> &vertex, std::vect
         }
 
         // read all faces (triangles)
-        T.resize(numFace);
+        T_model.resize(numFace);
         for (int i = 0; i < numFace; i++)
         {
             getline(ofs, line);
@@ -244,11 +266,11 @@ bool loadOFFFile(std::string filename, std::vector<glm::vec3> &vertex, std::vect
             if (std::stoi(tmpStr) != 3)
                 return false;
             getline(tmpStream, tmpStr, ' ');
-            T[i].x = std::stoi(tmpStr);
+            T_model[i].x = std::stoi(tmpStr);
             getline(tmpStream, tmpStr, ' ');
-            T[i].y = std::stoi(tmpStr);
+            T_model[i].y = std::stoi(tmpStr);
             getline(tmpStream, tmpStr, ' ');
-            T[i].z = std::stoi(tmpStr);
+            T_model[i].z = std::stoi(tmpStr);
         }
 
         ofs.close();
@@ -265,9 +287,9 @@ bool loadOFFFile(std::string filename, std::vector<glm::vec3> &vertex, std::vect
 void sphere(float sphereRadius, int sectorCount, int stackCount, std::vector<glm::vec3> &vertex, std::vector<glm::vec3> &normal, std::vector<glm::ivec3> &tria)
 {
     // init variables
-    // vertex.resize(0);
-    // normal.resize(0);
-    tria.resize(0);
+    vertex.resize(0);
+    normal.resize(0);
+    T_sphere.resize(0);
     // temp variables
     glm::vec3 sphereVertexPos;
     float xy;
@@ -318,14 +340,59 @@ void sphere(float sphereRadius, int sectorCount, int stackCount, std::vector<glm
             // k1 => k2 => k1+1
             if (i != 0)
             {
-                T.push_back(glm::ivec3(k1, k2, k1 + 1));
+                T_sphere.push_back(glm::ivec3(k1, k2, k1 + 1));
             }
             // k1+1 => k2 => k2+1
             if (i != (stackCount - 1))
             {
-                T.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+                T_sphere.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
             }
         }
+    }
+}
+void createFireflies(int &nFlies, std::vector<glm::vec3> &translations, std::vector<glm::vec3> &vectors)
+{
+    translations.resize(0);
+    for (int i = 0; i < nFlies; i++)
+    {
+        translations.push_back(glm::vec3(((float)rand() / (float)RAND_MAX), (float)rand() / (float)RAND_MAX * 4.f + 3.f, ((float)rand() / (float)RAND_MAX)));
+        vectors.push_back(glm::vec3(0.f));
+    }
+}
+
+glm::vec3 biome(float elevation)
+{
+    if (elevation < 0.1)
+    { // WATER BIOME
+        return vec3(68.0 / 255.0, 68.0 / 255.0, 120.0 / 255.0);
+    }
+    else if (elevation < 0.2)
+    { // BEACH
+        return vec3(255.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0);
+    }
+    else if (elevation < 0.3)
+    { // FOREST
+        return vec3(255.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0);
+    }
+    else if (elevation < 0.4)
+    { // DEEP FOREST
+        return vec3(255.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0);
+    }
+    else if (elevation < 0.6)
+    { // STEPPES
+        return vec3(255.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0);
+    }
+    else if (elevation < 0.8)
+    { // STONE
+        return vec3(255.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0);
+    }
+    else if (elevation < 0.9)
+    { // SNOW
+        return vec3(255.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0);
+    }
+    else
+    { // SNOW CAP
+        return vec3(255.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0);
     }
 }
 
@@ -333,6 +400,7 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
 {
     vertex.resize(0);
     normal.resize(0);
+    T_terrain.resize(0);
     // create terrain plane vertices
     float colSec = width / cols;
     float rowSec = height / rows;
@@ -340,13 +408,36 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
     {
         for (int c = 0; c <= cols; c++)
         {
-            vertex.push_back(glm::vec3((float)c * colSec / (float)width, -0.08f, -(float)r * rowSec / (float)height));
+            double nx = (double)r * rowSec / height - 0.5;
+            double ny = (double)c * colSec / width - 0.5;
+            // float perlinSum = -0.8f;
+
+            float perlinSum = (glm::perlin(glm::vec2(nx * freq, ny * freq)) + glm::perlin(glm::vec2(nx * freq * 3.f, ny * freq / 3.f)));
+
+            vertex.push_back(glm::vec3((float)c * colSec / (float)width, glm::clamp((float)perlinSum + 0.5f, 0.1f, 5.f), (float)r * rowSec / (float)height));
             // normal.push_back
-            UV.push_back(glm::vec2((float)c / (float)cols, (float)r / (float)rows));
+            // UV.push_back(glm::vec2((float)c / (float)cols, (float)r / (float)rows));
             // std::cout << vertex[vertex.size() - 1].x << std::endl;
+            // std::cout << perlinSum + 0.5f << std::endl;
+            // pixels.push_back(glm::vec3(0.3f, 0.2f, 0.66f));
         }
     }
-    vertex[222] += glm::vec3(0.f, 0.1f, 0.f);
+    // vertex[222] += glm::vec3(0.f, 0.1f, 0.f);
+
+    for (int i = 0; i < width; i++)
+    {
+        for (int j = 0; j < height; j++)
+        {
+            pixels.push_back(glm::vec3(255, 255, 255));
+            UV.push_back(glm::vec2((float)i / (float)width, (float)j / (float)height));
+            // pixels.push_back((unsigned char)22);
+            // pixels.push_back((unsigned char)0.3);
+            // pixels.push_back((unsigned char)0.3);
+            // pixels.push_back(0.3f);
+            // pixels.push_back(0.3f);
+            // pixels.push_back(0.3f);
+        }
+    }
 
     // create terrain plane triangles index buffer
     int k1, k2;
@@ -361,22 +452,54 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
             // 2 triangles per sector excluding first and last stacks
             // k1 => k2 => k1+1
 
-            T.push_back(glm::ivec3(k2, k1 + 1, k1));
+            // T.push_back(glm::ivec3(k1, k2, k1 + 1));
 
-            T.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+            // T.push_back(glm::ivec3(k2 + 1, k1 + 1, k2));
+            // if (i % 2 == 0)
+            // {
+
+            if (j % 2 == 0)
+            {
+
+                T_terrain.push_back(glm::ivec3(k1, k2, k2 + 1));
+
+                T_terrain.push_back(glm::ivec3(k2 + 1, k1 + 1, k1));
+            }
+            else
+            {
+                T_terrain.push_back(glm::ivec3(k2, k1 + 1, k1));
+
+                T_terrain.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+            }
+            // }
+            // else
+            // {
+            //     if (j % 2 == 0)
+            //     {
+            //         T.push_back(glm::ivec3(k2, k1 + 1, k1));
+
+            //         T.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
+            //     }
+            //     else
+            //     {
+            //         T.push_back(glm::ivec3(k1, k2, k2 + 1));
+
+            //         T.push_back(glm::ivec3(k2 + 1, k1 + 1, k1));
+            //     }
+            // }
         }
     }
 
-    normal.resize(T.size());
+    normal.resize(T_terrain.size());
     // calculate surface normals
-    for (int i = 0; i < T.size(); i++)
+    for (int i = 0; i < T_terrain.size(); i++)
     {
-        glm::vec3 u = vertex[T[i].y] - vertex[T[i].x];
-        glm::vec3 v = vertex[T[i].z] - vertex[T[i].x];
+        glm::vec3 u = vertex[T_terrain[i].y] - vertex[T_terrain[i].x];
+        glm::vec3 v = vertex[T_terrain[i].z] - vertex[T_terrain[i].x];
 
-        normal[T[i].x] += glm::vec3(u.y * v.z - u.z * v.y, -(u.z * v.x - u.x * v.z), u.x * v.y - u.y * v.x);
-        normal[T[i].y] += glm::vec3(u.y * v.z - u.z * v.y, -(u.z * v.x - u.x * v.z), u.x * v.y - u.y * v.x);
-        normal[T[i].z] += glm::vec3(u.y * v.z - u.z * v.y, -(u.z * v.x - u.x * v.z), u.x * v.y - u.y * v.x);
+        normal[T_terrain[i].x] += glm::vec3(u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x);
+        normal[T_terrain[i].y] += glm::vec3(u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x);
+        normal[T_terrain[i].z] += glm::vec3(u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x);
 
         // normal[T[i].x] += glm::normalize(glm::cross(V[T[i].y] - V[T[i].x], V[T[i].z] - V[T[i].x]));
 
@@ -390,9 +513,29 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
         normal[i] = glm::normalize(normal[i]);
     }
 
-    std::cout << normal[222].x << std::endl;
-    std::cout << normal[222].y << std::endl;
-    std::cout << normal[222].z << std::endl;
+    // procedural terrain noise
+    // for (int y = 0; y < height; y++)
+    // {
+    //     for (int x = 0; x < width; x++)
+    //     {
+    //         double nx = (double)x / width - 0.5;
+    //         double ny = (double)y / height - 0.5;
+
+    //         HM.push_back(glm::vec3(glm::perlin(glm::vec2(nx, ny))));
+    //         // std::cout << HM[HM.size() - 1].x << std::endl;
+    //         // HM[HM.size() - 1] = glm::normalize(HM[HM.size() - 1]);
+    //     }
+    // }
+
+    // GLuint noiseTex;
+    // glGenTextures(1, &noiseTex);
+
+    // glBindTexture(GL_TEXTURE_2D, noiseTex);
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, HM.data());
+
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    // delete (&HM);
 }
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
@@ -482,9 +625,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         cam.cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
         cam.cameraDir = glm::normalize(cam.cameraPos - cam.cameraTarget);
         cam.cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-        cam.cameraFront = glm::vec3(0.0f, 0.f, -1.f);
+        cam.cameraFront = glm::vec3(0.0f, 0.f, 1.f);
         cam.cameraRight = glm::normalize(glm::cross(cam.upValue, cam.cameraFront));
-        cam.yaw = -90.f;
+        cam.yaw = 90.f;
         cam.pitch = 0.f;
         break;
     case GLFW_KEY_ESCAPE:
@@ -517,7 +660,7 @@ int main(void)
 #endif
 
     // Create a windowed mode window and its OpenGL context
-    window = glfwCreateWindow(800, 600, "Hello OpenGL", NULL, NULL);
+    window = glfwCreateWindow(1600, 900, "Firefly", NULL, NULL);
 
     // take focus of cursor
     glfwSetCursorPos(window, 400, 300);
@@ -554,45 +697,6 @@ int main(void)
     std::cout << "Supported OpenGL is " << (const char *)glGetString(GL_VERSION) << std::endl;
     std::cout << "Supported GLSL is " << (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
-    // Initialize the VAO
-    // A Vertex Array Object (or VAO) is an object that describes how the vertex
-    // attributes are stored in a Vertex Buffer Object (or VBO). This means that
-    // the VAO is not the actual object storing the vertex data,
-    // but the descriptor of the vertex data.
-    VertexArrayObject VAO;
-    VertexArrayObject QAO;
-    VAO.init();
-
-    VAO.bind();
-
-    // Initialize the VBO with the vertices data
-    VBO.init();
-    // initialize normal array buffer
-    NBO.init();
-    // intialize uv coord array buffer
-    UVBO.init();
-    // initialize element array buffer
-    IndexBuffer.init(GL_ELEMENT_ARRAY_BUFFER);
-    // initialize model matrix
-    glm::mat4 modelMatrix = glm::mat4(1.0f);
-    // modelMatrix = glm::rotate(modelMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
-    // modelMatrix = glm::rotate(modelMatrix, glm::radians(-90.f), glm::vec3(0, 1, 0));
-
-    // 1: generate sphere, 0: load OFF model
-    GLuint tex;
-
-    // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-    // sphere(1.0f, 10, 20, V, VN, T);
-    // sphere(1.5f, 10, 20, V, VN, T);
-
-    terrain(0.f, 20, 20, 500, 500, V, VN);
-
-    // std::cout << V[10].x << std::endl;
-    VBO.update(V);
-    NBO.update(VN);
-    UVBO.update(UV);
-    IndexBuffer.update(T);
-
     // Initialize the OpenGL Program
     // A program controls the OpenGL pipeline and it must contains
     // at least a vertex shader and a fragment shader to be valid
@@ -601,6 +705,9 @@ int main(void)
     std::stringstream screenvertCode;
     std::stringstream fragCode;
     std::stringstream vertCode;
+    Program program_firefly;
+    std::stringstream fragCode_fireFly;
+    std::stringstream vertCode_fireFly;
 
     std::ifstream fragShaderFile("../shader/fragment.glsl");
 
@@ -609,11 +716,6 @@ int main(void)
     std::ifstream vertShaderFile("../shader/vertex.glsl");
 
     vertCode << vertShaderFile.rdbuf();
-    // Compile the two shaders and upload the binary to the GPU
-    // Note that we have to explicitly specify that the output "slot" called outColor
-    // is the one that we want in the fragment buffer (and thus on screen)
-    program.init(vertCode.str(), fragCode.str(), "outColor");
-    program.bind();
     // load fragment shader file
     std::ifstream fragShaderFile2("../shader/rendtexFragment.glsl");
 
@@ -623,12 +725,24 @@ int main(void)
 
     screenvertCode << vertShaderFile2.rdbuf();
 
-    // bind vertex buffer objects to the shader
-    program.bindVertexAttribArray("position", VBO);
-    program.bindVertexAttribArray("normal", NBO);
+    // load fragment shader file
+    std::ifstream fragShaderFile3("../shader/fragment_firefly.glsl");
 
-    program.bindVertexAttribArray("UV", UVBO);
-    // glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
+    fragCode_fireFly << fragShaderFile3.rdbuf();
+    // // load vertex shader file
+    std::ifstream vertShaderFile3("../shader/vertex_firefly.glsl");
+
+    vertCode_fireFly << vertShaderFile3.rdbuf();
+    program_firefly.init(vertCode_fireFly.str(), fragCode_fireFly.str(), "outColor");
+
+    // Compile the two shaders and upload the binary to the GPU
+    // Note that we have to explicitly specify that the output "slot" called outColor
+    // is the one that we want in the fragment buffer (and thus on screen)
+    program.init(vertCode.str(), fragCode.str(), "outColor");
+    program.bind();
+
+    // program.bindVertexAttribArray("HM", HMBO);
+    glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
 
     // Register the keyboard callback
     glfwSetKeyCallback(window, key_callback);
@@ -638,8 +752,99 @@ int main(void)
     // // Update viewport
     // glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    program.init(screenvertCode.str(), screenfragCode.str(), "outColor");
-    program.bind();
+    // Initialize the VAO_terrain
+    // A Vertex Array Object (or VAO_terrain) is an object that describes how the vertex
+    // attributes are stored in a Vertex Buffer Object (or VBO). This means that
+    // the VAO_terrain is not the actual object storing the vertex data,
+    // but the descriptor of the vertex data.
+    VertexArrayObject VAO_terrain;
+    VertexArrayObject VAO_sphere;
+    VertexArrayObject QAO;
+    VAO_terrain.init();
+
+    VAO_terrain.bind();
+
+    // Initialize the VBO with the vertices data
+    VBO_terrain.init();
+    // initialize normal array buffer
+    NBO_terrain.init();
+    // intialize uv coord array buffer
+    UVBO_terrain.init();
+    // height map buffer
+    // HMBO.init();
+    // initialize element array buffer
+    IndexBuffer_terrain.init(GL_ELEMENT_ARRAY_BUFFER);
+
+    // sphere(1.5f, 10, 20, V, VN, T);
+    int terrainCols = 30;
+    int terrainRows = 50;
+    terrain(1.5f, terrainCols, terrainRows, 500, 500, V, VN);
+
+    // std::cout << V[10].x << std::endl;
+    VBO_terrain.update(V);
+    NBO_terrain.update(VN);
+    UVBO_terrain.update(UV);
+    IndexBuffer_terrain.update(T_terrain);
+    // HMBO.update(HM);
+
+    // bind vertex buffer objects to the shader
+    program.bindVertexAttribArray("position", VBO_terrain);
+    program.bindVertexAttribArray("normal", NBO_terrain);
+    program.bindVertexAttribArray("UV", UVBO_terrain);
+
+    VAO_sphere.init();
+    VAO_sphere.bind();
+
+    // Initialize the VBO with the vertices data
+    VBO_sphere.init();
+    // initialize normal array buffer
+    NBO_sphere.init();
+    // intialize uv coord array buffer
+    UVBO_sphere.init();
+    // height map buffer
+    // HMBO.init();
+    // initialize element array buffer
+    IndexBuffer_sphere.init(GL_ELEMENT_ARRAY_BUFFER);
+
+    // bind to firefly shader
+    program_firefly.bind();
+    // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
+    sphere(0.004f, 5, 5, V, VN, T_sphere);
+
+    VBO_sphere.update(V);
+    NBO_sphere.update(VN);
+    UVBO_sphere.update(UV);
+    IndexBuffer_sphere.update(T_sphere);
+
+    // bind vertex buffer objects to the shader
+    program.bindVertexAttribArray("position", VBO_sphere);
+    program.bindVertexAttribArray("normal", NBO_sphere);
+    program.bindVertexAttribArray("UV", UVBO_sphere);
+
+    // create biome texture
+    GLuint biomeTex;
+    glGenTextures(1, &biomeTex);
+
+    glBindTexture(GL_TEXTURE_2D, biomeTex);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 500, 500, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+
+    // random instance translations of fireflies
+    srand(time(NULL));
+    int numFlies = 400;
+    std::vector<glm::vec3> translations_spheres(numFlies);
+    std::vector<glm::vec3> spheres_vectors(numFlies);
+
+    createFireflies(numFlies, translations_spheres, spheres_vectors);
+
+    Program program_rendTex;
+    program_rendTex.init(screenvertCode.str(), screenfragCode.str(), "outColor");
+    program_rendTex.bind();
     // glUniform1i(program.uniform("task"), task);
 
     // setup quad for render to texture
@@ -670,21 +875,21 @@ int main(void)
     QVBO.bind();
     QVBO.update(Q);
 
-    program.bindVertexAttribArray("qVert", QVBO);
+    program_rendTex.bindVertexAttribArray("qVert", QVBO);
 
     QUVBO.init();
     QUVBO.bind();
 
     QUVBO.update(QUV);
-    program.bindVertexAttribArray("QUV", QUVBO);
+    program_rendTex.bindVertexAttribArray("QUV", QUVBO);
 
     glBindVertexArray(0);
 
     GLuint FBO;
     glfwGetWindowSize(window, &width, &height);
 
-    glUniform1i(program.uniform("width"), width);
-    glUniform1i(program.uniform("height"), height);
+    glUniform1i(program_rendTex.uniform("width"), width);
+    glUniform1i(program_rendTex.uniform("height"), height);
 
     // setup framebuffer for render to texture
     glGenFramebuffers(1, &FBO);
@@ -754,8 +959,14 @@ int main(void)
     // 0: color, 1: norm, 2: position
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    Program defaultShader;
-    defaultShader.init(vertCode.str(), fragCode.str(), "outColor");
+
+    program.init(vertCode.str(), fragCode.str(), "outColor");
+
+    // initialize model matrix
+    glm::mat4 modelMatrix_terrain = glm::mat4(1.0f);
+    glm::mat4 modelMatrix_sphere = glm::mat4(1.0f);
+    // modelMatrix = glm::rotate(modelMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
+    // modelMatrix = glm::rotate(modelMatrix, glm::radians(-90.f), glm::vec3(0, 1, 0));
 
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(window))
@@ -773,41 +984,97 @@ int main(void)
         // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+        glBindTexture(GL_TEXTURE_2D, biomeTex);
 
-        // }
-        VAO.bind();
         // Bind your program
-        defaultShader.bind();
-        // glUniform1i(program.uniform("task"), task);
-        // Clear the framebuffer
+        program.bind();
 
-        glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-
+        // clear framebuffer
+        // glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+        glClearColor(40.f / 255.f, 43.f / 255.f, 57.f / 255.f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Enable depth test
         glEnable(GL_DEPTH_TEST);
 
-        IndexBuffer.bind();
+        // lighting setup
+        //  Set the uniform values
 
-        // program.bind();
+        glUniform3f(program.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
+        glUniform3f(program.uniform("camPos"), cam.cameraPos.x, cam.cameraPos.y, cam.cameraPos.z);
 
-        // Set the uniform values
-        // glUniform3f(program.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
-        glUniform3f(defaultShader.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
-        glUniform3f(defaultShader.uniform("camPos"), cam.cameraPos.x, cam.cameraPos.y, cam.cameraPos.z);
-        glUniformMatrix4fv(defaultShader.uniform("modelMatrix"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
-        glUniformMatrix4fv(defaultShader.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
-        glUniformMatrix4fv(defaultShader.uniform("projMatrix"), 1, GL_FALSE, glm::value_ptr(projMatrix));
+        glUniformMatrix4fv(program.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+        glUniformMatrix4fv(program.uniform("projMatrix"), 1, GL_FALSE, glm::value_ptr(projMatrix));
         // direction towards the light
-        glUniform3fv(defaultShader.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, 3.0f)));
+        glUniform3fv(program.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, -3.0f)));
+        // glUniform3fv(program.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f + currentFrame * 5.f, 2.0f, -3.0f)));
         // x: ambient;
-        glUniform3f(defaultShader.uniform("lightParams"), 0.1f, 50.0f, 0.0f);
+        glUniform3f(program.uniform("lightParams"), 0.45f, 50.0f, 0.0f);
 
-        // // Draw a triangle
-        // glDrawArrays(GL_TRIANGLES, 0, V.size());
-        // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glDrawElements(GL_TRIANGLES, T.size() * 3, GL_UNSIGNED_INT, 0);
+        { // bind and draw terrain VAO
+            VAO_terrain.bind();
+            modelMatrix_terrain = glm::translate(glm::mat4(1.0f), glm::vec3(0.f, 0.f, 0.f));
+            glUniformMatrix4fv(program.uniform("modelMatrix"), 1, GL_FALSE, glm::value_ptr(modelMatrix_terrain));
+            IndexBuffer_terrain.bind();
+
+            // // Draw a triangle
+            // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glDrawElements(GL_TRIANGLES, T_terrain.size() * 3, GL_UNSIGNED_INT, 0);
+        }
+
+        program_firefly.bind();
+        glUniform3f(program_firefly.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
+        glUniform3f(program_firefly.uniform("camPos"), cam.cameraPos.x, cam.cameraPos.y, cam.cameraPos.z);
+
+        glUniformMatrix4fv(program_firefly.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+        glUniformMatrix4fv(program_firefly.uniform("projMatrix"), 1, GL_FALSE, glm::value_ptr(projMatrix));
+        // direction towards the light
+        glUniform3fv(program_firefly.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, -3.0f)));
+        // glUniform3fv(program_firefly.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f + currentFrame * 5.f, 2.0f, -3.0f)));
+        // x: ambient;
+        glUniform3f(program_firefly.uniform("lightParams"), 0.45f, 50.0f, 0.0f);
+
+        { // bind and draw sphere VAO
+            VAO_sphere.bind();
+
+            // use terrain render to texture to render fireflies above terrain
+            // glActiveTexture(GL_TEXTURE2);
+            // glBindTexture(GL_TEXTURE_2D, TBO_pos);
+
+            // glUniform1i(program_firefly.uniform("texPos"), 2);
+            // glActiveTexture(GL_TEXTURE0);
+            // glUniform1i(program_firefly.uniform("numFlies"), randInt);
+            float randFloat = (2 * ((float)rand() / (float)RAND_MAX) - 1.f) / 100.f;
+            for (unsigned int i = 0; i < numFlies; i++)
+            {
+
+                float speed_reduction = 200000.f;
+                // float altSign = (cosf(currentFrame) > 0) - (cosf(currentFrame) < 0);
+                if (translations_spheres[(int)i].y >= 0.f)
+                {
+                    spheres_vectors[(int)i] = glm::vec3(spheres_vectors[(int)i].x + (((float)rand() / (float)RAND_MAX) - 0.5f) / speed_reduction, spheres_vectors[(int)i].y + (((float)rand() / (float)RAND_MAX) - 0.5f) / (speed_reduction), spheres_vectors[(int)i].z + (((float)rand() / (float)RAND_MAX) - 0.5f) / speed_reduction);
+                    translations_spheres[(int)i] = translations_spheres[(int)i] + spheres_vectors[(int)i] + glm::vec3(0.f, -0.001f, 0.f);
+                }
+                else
+                {
+                    translations_spheres[(int)i] = glm::vec3(((float)rand() / (float)RAND_MAX), (float)rand() / (float)RAND_MAX * 4.f + 3.f, ((float)rand() / (float)RAND_MAX));
+                    spheres_vectors[(int)i] = glm::vec3(0.f);
+                }
+
+                // std::cout << spheres_vectors[(int)i].x << std::endl;
+                // std::cout << (2 * ((float)rand() / (float)RAND_MAX) - 1.f) << std::endl;
+                glUniform3fv(program_firefly.uniform("offsets[" + std::to_string(i) + "]"), 1, glm::value_ptr(translations_spheres[(int)i]));
+            }
+            IndexBuffer_sphere.bind();
+            // modelMatrix_sphere = glm::translate(glm::mat4(1.0f), glm::vec3(sinf(currentFrame) * 0.1f, 1.f, cosf(currentFrame) * 0.1f));
+            modelMatrix_sphere = glm::translate(glm::mat4(1.0f), glm::vec3(0.f, 0.f, 0.f));
+            glUniformMatrix4fv(program_firefly.uniform("modelMatrix"), 1, GL_FALSE, glm::value_ptr(modelMatrix_sphere));
+            // // Draw a triangle
+
+            // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glDrawElementsInstanced(GL_TRIANGLES, T_sphere.size() * 3, GL_UNSIGNED_INT, 0, numFlies);
+        }
+
         glBindVertexArray(0);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -818,15 +1085,15 @@ int main(void)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // // program.init(screenvertCode.str(), screenfragCode.str(), "outColor");
-        program.bind();
+        program_rendTex.bind();
 
-        glUniform3f(program.uniform("camPos"), cam.cameraPos.x, cam.cameraPos.y, cam.cameraPos.z);
-        glUniformMatrix4fv(program.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
-        glUniform3f(program.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
+        glUniform3f(program_rendTex.uniform("camPos"), cam.cameraPos.x, cam.cameraPos.y, cam.cameraPos.z);
+        glUniformMatrix4fv(program_rendTex.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+        glUniform3f(program_rendTex.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
         // direction towards the light
-        glUniform3fv(program.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, 3.0f)));
+        glUniform3fv(program_rendTex.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, 3.0f)));
         // x: ambient;
-        glUniform3f(program.uniform("lightParams"), 0.1f, 50.0f, 0.0f);
+        glUniform3f(program_rendTex.uniform("lightParams"), 0.1f, 50.0f, 0.0f);
 
         QAO.bind();
 
@@ -837,7 +1104,7 @@ int main(void)
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, TBO_color);
-        glUniform1i(program.uniform("texColor"), 0);
+        glUniform1i(program_rendTex.uniform("texColor"), 0);
 
         // glActiveTexture(GL_TEXTURE0);
         // glBindTexture(GL_TEXTURE_2D, TBO_color);
@@ -849,10 +1116,10 @@ int main(void)
         // glBindTexture(GL_TEXTURE_2D, TBO_depth);
 
         // // connect sampler2D uniforms to which texture unit
-        // glUniform1i(program.uniform("texColor"), 0);
-        // glUniform1i(program.uniform("texNorm"), 1);
-        // glUniform1i(program.uniform("texPos"), 2);
-        // glUniform1i(program.uniform("texDepth"), 3);
+        // glUniform1i(program_rendTex.uniform("texColor"), 0);
+        // glUniform1i(program_rendTex.uniform("texNorm"), 1);
+        // glUniform1i(program_rendTex.uniform("texPos"), 2);
+        // glUniform1i(program_rendTex.uniform("texDepth"), 3);
         // glActiveTexture(GL_TEXTURE0);
 
         glDrawArrays(GL_TRIANGLES, 0, Q.size());
@@ -866,10 +1133,17 @@ int main(void)
 
     // Deallocate opengl memory
     program.free();
-    VAO.free();
-    VBO.free();
-    UVBO.free();
-    IndexBuffer.free();
+    program_firefly.free();
+    program_rendTex.free();
+    VAO_terrain.free();
+    VBO_terrain.free();
+    UVBO_terrain.free();
+    IndexBuffer_terrain.free();
+
+    VAO_sphere.free();
+    VBO_sphere.free();
+    UVBO_sphere.free();
+    IndexBuffer_sphere.free();
 
     // Deallocate glfw internals
     glfwTerminate();
