@@ -355,7 +355,7 @@ void createFireflies(int &nFlies, std::vector<glm::vec3> &translations, std::vec
     translations.resize(0);
     for (int i = 0; i < nFlies; i++)
     {
-        translations.push_back(glm::vec3(((float)rand() / (float)RAND_MAX), (float)rand() / (float)RAND_MAX * 4.f + 3.f, ((float)rand() / (float)RAND_MAX)));
+        translations.push_back(glm::vec3(((float)rand() / (float)RAND_MAX), (float)rand() / (float)RAND_MAX * 7.f, ((float)rand() / (float)RAND_MAX)));
         vectors.push_back(glm::vec3(0.f));
     }
 }
@@ -1048,6 +1048,8 @@ int main(void)
             // glActiveTexture(GL_TEXTURE0);
             // glUniform1i(program_firefly.uniform("numFlies"), randInt);
             float randFloat = (2 * ((float)rand() / (float)RAND_MAX) - 1.f) / 100.f;
+
+            float closestSnow = 0.f;
             for (unsigned int i = 0; i < numFlies; i++)
             {
 
@@ -1061,19 +1063,24 @@ int main(void)
                 }
                 else
                 {
-                    translations_spheres[(int)i] = glm::vec3(((float)rand() / (float)RAND_MAX), (float)rand() / (float)RAND_MAX * 4.f + 3.f, ((float)rand() / (float)RAND_MAX));
+                    translations_spheres[(int)i] = glm::vec3(((float)rand() / (float)RAND_MAX), 7.f, ((float)rand() / (float)RAND_MAX));
                     spheres_vectors[(int)i] = glm::vec3(0.f);
                 }
 
                 // std::cout << glm::distance(translations_spheres[(int)i], cam.cameraPos) << std::endl;
-                if (glm::distance(translations_spheres[(int)i], cam.cameraPos) > 10.f)
+                float distanceToSnow = glm::distance(translations_spheres[(int)i], cam.cameraPos);
+                if (distanceToSnow < closestSnow)
                 {
-                    numFlies = 0;
-                    break;
+                    closestSnow = distanceToSnow;
                 }
                 // std::cout << spheres_vectors[(int)i].x << std::endl;
                 // std::cout << (2 * ((float)rand() / (float)RAND_MAX) - 1.f) << std::endl;
                 glUniform3fv(program_firefly.uniform("offsets[" + std::to_string(i) + "]"), 1, glm::value_ptr(translations_spheres[(int)i]));
+            }
+
+            if (closestSnow > 7.f)
+            {
+                numFlies = 0;
             }
             IndexBuffer_sphere.bind();
             // modelMatrix_sphere = glm::translate(glm::mat4(1.0f), glm::vec3(sinf(currentFrame) * 0.1f, 1.f, cosf(currentFrame) * 0.1f));
