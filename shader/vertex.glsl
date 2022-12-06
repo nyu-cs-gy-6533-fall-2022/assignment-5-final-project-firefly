@@ -11,7 +11,7 @@ uniform vec3 camPos;
 
 //multiple lighting uniforms
 uniform int numSnow;
-uniform vec3 snow[200];
+uniform vec3 snow[100];
 
 in vec3 position;
 in vec3 normal;
@@ -115,18 +115,24 @@ void main()
         vec3 lightsSum;
         for(int i = 0; i<numSnow; i++){
             float constAtt = 1.0;
-            float linearAtt = 600.0;
-            float expAtt = 2.0;
+
+            // //many snow
+            // float linearAtt = 600.0;
+            // float expAtt = 2.0;
+            //few snow
+            float linearAtt = 1050.0;
+            float expAtt = 0.7;
 
             // float snowDistance = distance(snow[i], position);
             float snowDistance = length(position - snow[i]);
             attenuation_factor = 1/ (constAtt + linearAtt * snowDistance + expAtt * exp2(snowDistance));
             // if(snow[i].y > position.y){
-            vec3 snowCol = vec3(0.0/ 255.0, 220.0/255.0, 255.0/255.0);
-            // vec3 snowCol = vec3(1.0, 0.0, 0.0)
-            vec3 snowIntensity = vec3(1.0, 70.0, 0.0);
+            vec3 snowCol = vec3(255.0/ 255.0, 220.0/255.0, 255.0/255.0);
+            // vec3 snowCol = vec3(1.0, 0.0, 0.0);
+            vec3 snowIntensity = vec3(5.0, 70.0, 0.0);
             if(snowDistance < 1.0){
-                lightsSum += bhong(snow[i], snowCol, snowCol, snowCol, snowIntensity) * attenuation_factor;
+                // lightsSum += bhong(snow[i], snowCol, snowCol, snowCol, snowIntensity) * attenuation_factor;
+                lightsSum += snowCol * attenuation_factor;
             }
             
             // }else{
@@ -135,7 +141,7 @@ void main()
             
         }
 
-        color = bhong(lightPos, ambCol, col, specCol, lightParams) + lightsSum;
+        color = bhong(lightPos, ambCol, col, specCol, lightParams) + lightsSum *4.0;
         pos = vec3(modelMatrix * vec4(position, 1.0));
         // pos = vec3(modelMatrix * vec4(position.x, Noise3D(vec3(position.x,position.y, position.z), 0.5), position.z , 1.0));
         gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position , 1.0);

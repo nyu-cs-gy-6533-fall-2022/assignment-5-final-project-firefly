@@ -836,7 +836,7 @@ int main(void)
 
     // random instance translations of fireflies
     srand(time(NULL));
-    int numFlies = 200;
+    int numFlies = 100;
     std::vector<glm::vec3> translations_spheres(numFlies);
     std::vector<glm::vec3> spheres_vectors(numFlies);
 
@@ -1097,7 +1097,7 @@ int main(void)
             {
                 glUniform1i(program.uniform("numSnow"), numFlies);
                 // temp vector to have light position be ahead of sphere position
-                glm::vec3 translationTemp = translations_spheres[(int)i] + glm::vec3(0.f, -1.f, 0.f);
+                glm::vec3 translationTemp = translations_spheres[(int)i] + glm::vec3(0.f, -0.25f, 0.f);
                 glUniform3fv(program.uniform("snow[" + std::to_string(i) + "]"), 1, glm::value_ptr(translationTemp));
             }
 
