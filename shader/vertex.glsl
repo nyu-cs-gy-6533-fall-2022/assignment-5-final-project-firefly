@@ -8,7 +8,10 @@ uniform vec3 triangleColor;
 uniform vec3 lightPos;
 uniform vec3 lightParams;
 uniform vec3 camPos;
-uniform int task;
+
+//multiple lighting uniforms
+uniform int numSnow;
+uniform vec3 snow[200];
 
 in vec3 position;
 in vec3 normal;
@@ -73,16 +76,24 @@ float Noise3D(vec3 coord, float wavelength)
    return interpolatedNoise3D(coord.x/wavelength, coord.y/wavelength, coord.z/wavelength);
 }
 
+vec3 bhong(vec3 lPos, vec3 amb, vec3 lCol, vec3 specCol, vec3 lParams){
 
+    //low poly coloring
+
+    n = mat3(transpose(inverse(modelMatrix))) * normal;
+
+    vec3 normal = normalize(n);
+    vec3 lightDir = normalize(lPos -vec3(modelMatrix * vec4(position, 1.0)));
+    vec3 col = clamp( amb * lParams.x + 
+    lCol * max(0.0, dot(normal, lightDir)) + 
+    specCol * pow(max(0.0, dot( normalize(camPos - vec3(modelMatrix * vec4(position, 1.0))), normalize( reflect(-lightDir, normal)))), lParams.y),
+    0.0, 1.0);
+
+    return col;
+}
 
 void main()
 {       
-        //low poly coloring
-
-        n = mat3(transpose(inverse(modelMatrix))) * normal;
-        
-        // vec3 col = triangleColor;
-
         // //  day
         // vec3 col = vec3(255.0/255.0, 226.0/255.0, 143.0/255.0) ; // light color
         // vec3 specCol = vec3(1.0);
@@ -98,16 +109,33 @@ void main()
         // vec3 specCol = vec3(1.0);
         // vec3 ambCol = vec3(1.0);
         
-        
+        // vec3 col = triangleColor;
 
-        vec3 normal = normalize(n);
-        vec3 lightDir = normalize(lightPos -vec3(modelMatrix * vec4(position, 1.0)));
-        col = clamp( ambCol * lightParams.x + 
-        col * max(0.0, dot(normal, lightDir)) + 
-        specCol * pow(max(0.0, dot( normalize(camPos - vec3(modelMatrix * vec4(position, 1.0))), normalize( reflect(-lightDir, normal)))), lightParams.y),
-        0.0, 1.0);
+        float attenuation_factor;
+        vec3 lightsSum;
+        for(int i = 0; i<numSnow; i++){
+            float constAtt = 1.0;
+            float linearAtt = 600.0;
+            float expAtt = 2.0;
 
-        color = col;
+            // float snowDistance = distance(snow[i], position);
+            float snowDistance = length(position - snow[i]);
+            attenuation_factor = 1/ (constAtt + linearAtt * snowDistance + expAtt * exp2(snowDistance));
+            // if(snow[i].y > position.y){
+            vec3 snowCol = vec3(0.0/ 255.0, 220.0/255.0, 255.0/255.0);
+            // vec3 snowCol = vec3(1.0, 0.0, 0.0)
+            vec3 snowIntensity = vec3(1.0, 70.0, 0.0);
+            if(snowDistance < 1.0){
+                lightsSum += bhong(snow[i], snowCol, snowCol, snowCol, snowIntensity) * attenuation_factor;
+            }
+            
+            // }else{
+            //     lightsSum += vec3(0.0);
+            // }
+            
+        }
+
+        color = bhong(lightPos, ambCol, col, specCol, lightParams) + lightsSum;
         pos = vec3(modelMatrix * vec4(position, 1.0));
         // pos = vec3(modelMatrix * vec4(position.x, Noise3D(vec3(position.x,position.y, position.z), 0.5), position.z , 1.0));
         gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position , 1.0);

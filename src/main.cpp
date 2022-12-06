@@ -355,7 +355,7 @@ void createFireflies(int &nFlies, std::vector<glm::vec3> &translations, std::vec
     translations.resize(0);
     for (int i = 0; i < nFlies; i++)
     {
-        translations.push_back(glm::vec3(((float)rand() / (float)RAND_MAX), (float)rand() / (float)RAND_MAX * 7.f, ((float)rand() / (float)RAND_MAX)));
+        translations.push_back(glm::vec3(((float)rand() / (float)RAND_MAX), (float)rand() / (float)RAND_MAX * 8.f, ((float)rand() / (float)RAND_MAX)));
         vectors.push_back(glm::vec3(0.f));
     }
 }
@@ -836,7 +836,7 @@ int main(void)
 
     // random instance translations of fireflies
     srand(time(NULL));
-    int numFlies = 400;
+    int numFlies = 200;
     std::vector<glm::vec3> translations_spheres(numFlies);
     std::vector<glm::vec3> spheres_vectors(numFlies);
 
@@ -989,9 +989,6 @@ int main(void)
         glBindFramebuffer(GL_FRAMEBUFFER, FBO);
         glBindTexture(GL_TEXTURE_2D, biomeTex);
 
-        // Bind your program
-        program.bind();
-
         // clear framebuffer
         // glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClearColor(40.f / 255.f, 43.f / 255.f, 57.f / 255.f, 1.0f);
@@ -1000,30 +997,7 @@ int main(void)
         // Enable depth test
         glEnable(GL_DEPTH_TEST);
 
-        // lighting setup
-        //  Set the uniform values
-
-        glUniform3f(program.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
-        glUniform3f(program.uniform("camPos"), cam.cameraPos.x, cam.cameraPos.y, cam.cameraPos.z);
-
-        glUniformMatrix4fv(program.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
-        glUniformMatrix4fv(program.uniform("projMatrix"), 1, GL_FALSE, glm::value_ptr(projMatrix));
-        // direction towards the light
-        glUniform3fv(program.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, -3.0f)));
-        // glUniform3fv(program.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f + currentFrame * 5.f, 2.0f, -3.0f)));
-        // x: ambient;
-        glUniform3f(program.uniform("lightParams"), 0.45f, 50.0f, 0.0f);
-
-        { // bind and draw terrain VAO
-            VAO_terrain.bind();
-            modelMatrix_terrain = glm::translate(glm::mat4(1.0f), glm::vec3(0.f, 0.f, 0.f));
-            glUniformMatrix4fv(program.uniform("modelMatrix"), 1, GL_FALSE, glm::value_ptr(modelMatrix_terrain));
-            IndexBuffer_terrain.bind();
-
-            // // Draw a triangle
-            // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glDrawElements(GL_TRIANGLES, T_terrain.size() * 3, GL_UNSIGNED_INT, 0);
-        }
+        // SPHERES MUST BE RENDERED FIRST TO ENSURE THAT OFFSET POSITION IS CORRECT
 
         program_firefly.bind();
         glUniform3f(program_firefly.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
@@ -1054,16 +1028,17 @@ int main(void)
             {
 
                 float speed_reduction = 200000.f;
+                float fall_speed = -0.003f;
                 // float altSign = (cosf(currentFrame) > 0) - (cosf(currentFrame) < 0);
 
-                if (translations_spheres[(int)i].y >= 0.f)
+                if (translations_spheres[(int)i].y >= -1.f)
                 {
                     spheres_vectors[(int)i] = glm::vec3(spheres_vectors[(int)i].x + (((float)rand() / (float)RAND_MAX) - 0.5f) / speed_reduction, spheres_vectors[(int)i].y + (((float)rand() / (float)RAND_MAX) - 0.5f) / (speed_reduction), spheres_vectors[(int)i].z + (((float)rand() / (float)RAND_MAX) - 0.5f) / speed_reduction);
-                    translations_spheres[(int)i] = translations_spheres[(int)i] + spheres_vectors[(int)i] + glm::vec3(0.f, -0.001f, 0.f);
+                    translations_spheres[(int)i] = translations_spheres[(int)i] + spheres_vectors[(int)i] + glm::vec3(0.f, fall_speed, 0.f);
                 }
                 else
                 {
-                    translations_spheres[(int)i] = glm::vec3(((float)rand() / (float)RAND_MAX), 7.f, ((float)rand() / (float)RAND_MAX));
+                    translations_spheres[(int)i] = glm::vec3(((float)rand() / (float)RAND_MAX), 8.f, ((float)rand() / (float)RAND_MAX));
                     spheres_vectors[(int)i] = glm::vec3(0.f);
                 }
 
@@ -1073,6 +1048,7 @@ int main(void)
                 {
                     closestSnow = distanceToSnow;
                 }
+
                 // std::cout << spheres_vectors[(int)i].x << std::endl;
                 // std::cout << (2 * ((float)rand() / (float)RAND_MAX) - 1.f) << std::endl;
                 glUniform3fv(program_firefly.uniform("offsets[" + std::to_string(i) + "]"), 1, glm::value_ptr(translations_spheres[(int)i]));
@@ -1082,7 +1058,6 @@ int main(void)
             {
                 numFlies = 0;
             }
-            std::cout << closestSnow << std::endl;
             IndexBuffer_sphere.bind();
             // modelMatrix_sphere = glm::translate(glm::mat4(1.0f), glm::vec3(sinf(currentFrame) * 0.1f, 1.f, cosf(currentFrame) * 0.1f));
             modelMatrix_sphere = glm::translate(glm::mat4(1.0f), glm::vec3(0.f, 0.f, 0.f));
@@ -1091,6 +1066,42 @@ int main(void)
 
             // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
             glDrawElementsInstanced(GL_TRIANGLES, T_sphere.size() * 3, GL_UNSIGNED_INT, 0, numFlies);
+        }
+
+        // Bind your program terrain
+        program.bind();
+
+        // lighting setup
+        //  Set the uniform values
+
+        glUniform3f(program.uniform("triangleColor"), 1.0f, 0.5f, 0.0f);
+        glUniform3f(program.uniform("camPos"), cam.cameraPos.x, cam.cameraPos.y, cam.cameraPos.z);
+
+        glUniformMatrix4fv(program.uniform("viewMatrix"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+        glUniformMatrix4fv(program.uniform("projMatrix"), 1, GL_FALSE, glm::value_ptr(projMatrix));
+        // direction towards the light
+        glUniform3fv(program.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, -3.0f)));
+        // glUniform3fv(program.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f + currentFrame * 5.f, 2.0f, -3.0f)));
+        // x: ambient;
+        glUniform3f(program.uniform("lightParams"), 0.45f, 50.0f, 0.0f);
+
+        { // bind and draw terrain VAO
+            VAO_terrain.bind();
+            modelMatrix_terrain = glm::translate(glm::mat4(1.0f), glm::vec3(0.f, 0.f, 0.f));
+            glUniformMatrix4fv(program.uniform("modelMatrix"), 1, GL_FALSE, glm::value_ptr(modelMatrix_terrain));
+            IndexBuffer_terrain.bind();
+
+            // // Draw a triangle
+            // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            for (int i = 0; i < numFlies; i++)
+            {
+                glUniform1i(program.uniform("numSnow"), numFlies);
+                // temp vector to have light position be ahead of sphere position
+                glm::vec3 translationTemp = translations_spheres[(int)i] + glm::vec3(0.f, -1.f, 0.f);
+                glUniform3fv(program.uniform("snow[" + std::to_string(i) + "]"), 1, glm::value_ptr(translationTemp));
+            }
+
+            glDrawElements(GL_TRIANGLES, T_terrain.size() * 3, GL_UNSIGNED_INT, 0);
         }
 
         glBindVertexArray(0);

@@ -10,7 +10,7 @@ uniform vec3 lightParams;
 uniform vec3 camPos;
 uniform int task;
 
-uniform vec3 offsets[400];
+uniform vec3 offsets[200];
 
 in vec3 position;
 in vec3 normal;
