@@ -360,6 +360,47 @@ void createFireflies(int &nFlies, std::vector<glm::vec3> &translations, std::vec
     }
 }
 
+void createTerrainInstances(int &nTerrain, std::vector<glm::vec3> &translations)
+{
+    translations.resize(0);
+    translations.push_back(glm::vec3(0.f));
+    for (int i = 0; i < nTerrain; i++)
+    {                   // construct instanced terrain in counter-clockwise order
+        if (i % 9 == 0) // back middle
+        {
+            translations.push_back(glm::vec3(0.f, 0.f, (float)(1 + i / 9)));
+        }
+        else if (i % 9 == 1) // back left
+        {
+            translations.push_back(glm::vec3((float)(0.96f + i / 9), 0.f, (float)(1 + i / 9)));
+        }
+        else if (i % 9 == 2) // middle left
+        {
+            translations.push_back(glm::vec3((float)(0.96f + i / 9), 0.f, 0.f));
+        }
+        else if (i % 9 == 3) // front left
+        {
+            translations.push_back(glm::vec3((float)(0.96f + i / 9), 0.f, (float)-(1 + i / 9)));
+        }
+        else if (i % 9 == 4) // front middle
+        {
+            translations.push_back(glm::vec3(0.f, 0.f, (float)-(1 + i / 9)));
+        }
+        else if (i % 9 == 5) // front right
+        {
+            translations.push_back(glm::vec3((float)-(0.96f + i / 9), 0.f, (float)-(1 + i / 9)));
+        }
+        else if (i % 9 == 6) // middle right
+        {
+            translations.push_back(glm::vec3((float)-(0.96f + i / 9), 0.f, 0.f));
+        }
+        else if (i % 9 == 7) // back right
+        {
+            translations.push_back(glm::vec3((float)-(0.96f + i / 9), 0.f, (float)(1 + i / 9)));
+        }
+    }
+}
+
 glm::vec3 biome(float elevation)
 {
     if (elevation < 0.1)
@@ -410,9 +451,9 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
         {
             double nx = (double)r * rowSec / height - 0.5;
             double ny = (double)c * colSec / width - 0.5;
-            // float perlinSum = -0.8f;
+            float perlinSum = -0.0f;
 
-            float perlinSum = (glm::perlin(glm::vec2(nx * freq, ny * freq)) + glm::perlin(glm::vec2(nx * freq * 3.f, ny * freq / 3.f)) / 2.f);
+            // float perlinSum = (glm::perlin(glm::vec2(nx * freq, ny * freq)) + glm::perlin(glm::vec2(nx * freq * 3.f, ny * freq / 3.f)) / 2.f);
 
             vertex.push_back(glm::vec3((float)c * colSec / (float)width, glm::clamp((float)perlinSum + 0.5f, 0.1f, 5.f), (float)r * rowSec / (float)height));
             // normal.push_back
@@ -792,6 +833,10 @@ int main(void)
     program.bindVertexAttribArray("normal", NBO_terrain);
     program.bindVertexAttribArray("UV", UVBO_terrain);
 
+    int numTerrain = 9; // total - 1 terrain grids
+    std::vector<glm::vec3> translations_terrain(numTerrain);
+    createTerrainInstances(numTerrain, translations_terrain);
+
     VAO_sphere.init();
     VAO_sphere.bind();
 
@@ -1097,11 +1142,17 @@ int main(void)
             {
                 glUniform1i(program.uniform("numSnow"), numFlies);
                 // temp vector to have light position be ahead of sphere position
-                glm::vec3 translationTemp = translations_spheres[(int)i] + glm::vec3(0.f, -0.25f, 0.f);
+                glm::vec3 translationTemp = translations_spheres[(int)i] + glm::vec3(0.f, 0.f, 0.f);
                 glUniform3fv(program.uniform("snow[" + std::to_string(i) + "]"), 1, glm::value_ptr(translationTemp));
             }
 
-            glDrawElements(GL_TRIANGLES, T_terrain.size() * 3, GL_UNSIGNED_INT, 0);
+            for (int i = 0; i < numTerrain; i++)
+            {
+                // glUniform1i(program.uniform("numTerrain"), numTerrain);
+
+                glUniform3fv(program.uniform("terrainOffset[" + std::to_string(i) + "]"), 1, glm::value_ptr(translations_terrain[(int)i]));
+            }
+            glDrawElementsInstanced(GL_TRIANGLES, T_terrain.size() * 3, GL_UNSIGNED_INT, 0, numTerrain);
         }
 
         glBindVertexArray(0);

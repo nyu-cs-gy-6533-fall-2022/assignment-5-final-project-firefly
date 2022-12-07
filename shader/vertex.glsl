@@ -12,6 +12,7 @@ uniform vec3 camPos;
 //multiple lighting uniforms
 uniform int numSnow;
 uniform vec3 snow[100];
+uniform vec3 terrainOffset[9];
 
 in vec3 position;
 in vec3 normal;
@@ -142,10 +143,14 @@ void main()
         }
 
         color = bhong(lightPos, ambCol, col, specCol, lightParams) + lightsSum *4.0;
-        pos = vec3(modelMatrix * vec4(position, 1.0));
-        // pos = vec3(modelMatrix * vec4(position.x, Noise3D(vec3(position.x,position.y, position.z), 0.5), position.z , 1.0));
-        gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position , 1.0);
-        // gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position.x, Noise3D(vec3(position.x,position.y, position.z), 0.5), position.z , 1.0);
+
+        vec3 offset = terrainOffset[gl_InstanceID];
+
+        // pos = vec3(modelMatrix * vec4(position, 1.0));
+        pos = vec3(modelMatrix * vec4(position.x, Noise3D(vec3(position.x + offset.x,position.y, position.z + offset.z), 0.5), position.z , 1.0));
+        
+        // gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position + offset, 1.0);
+        gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position.x + offset.x, Noise3D(vec3(position.x + offset.x,position.y, position.z + offset.z), 0.5), position.z + offset.z , 1.0);
         norms = normal;
 
         // glpos =  projMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);

@@ -49,7 +49,7 @@ void main()
         pos = vec3(modelMatrix * vec4(vec3(position.x, texture(texPos, texCoord).y, position.z), 1.0));
 
         vec3 offset = offsets[gl_InstanceID];
-        gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(vec3(position.x + offset.x , position.y + offset.y /3, position.z + offset.z), 1.0);
+        gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(vec3(position.x + offset.x , position.y + offset.y, position.z + offset.z), 1.0);
         // gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position , 1.0);
         // gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position.x, Noise3D(vec3(position.x,position.y, position.z), 0.5), position.z , 1.0);
         norms = normal;
