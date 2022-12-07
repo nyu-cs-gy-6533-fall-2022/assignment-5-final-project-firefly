@@ -72,6 +72,45 @@ float interpolatedNoise3D(float x, float y, float z)
     return simple_interpolate(ii1 , ii2 , fractional_y);
 }
 
+vec3 biome(float elevation)
+{
+    if (elevation <= 0.1)
+    { // WATER BIOME
+        return vec3(68.0 / 255.0, 68.0 / 255.0, 120.0 / 255.0);
+    }
+    else if (elevation < 0.2)
+    { // BEACH
+        return vec3(161.0 / 255.0, 144.0 / 255.0, 120.0 / 255.0);
+    }
+    else if (elevation < 0.3)
+    { // FOREST
+        return vec3(81.0 / 255.0, 154.0 / 255.0, 78.0 / 255.0);
+    }
+    else if (elevation < 0.4)
+    { // DEEP FOREST
+        return vec3(46.0 / 255.0, 120.0 / 255.0, 88.0 / 255.0);
+    }
+    else if (elevation <0.5){
+        return vec3(118.0 / 255.0, 162.0 / 255.0, 132.0 / 255.0);
+    }
+    else if (elevation < 0.6)
+    { // STEPPES
+        return vec3(152.0 / 255.0, 170.0 / 255.0, 123.0 / 255.0);
+    }
+    else if (elevation < 0.8)
+    { // STONE
+        return vec3(155.0 / 255.0, 172.0 / 255.0, 160.0 / 255.0);
+    }
+    else if (elevation < 0.9)
+    { // SNOW
+        return vec3(210.0 / 255.0, 226.0 / 255.0, 227.0 / 255.0);
+    }
+    else
+    { // SNOW CAP
+        return vec3(241.0 / 255.0, 252.0 / 255.0, 252.0 / 255.0);
+    }
+}
+
 float Noise3D(vec3 coord, float wavelength)
 {
    return interpolatedNoise3D(coord.x/wavelength, coord.y/wavelength, coord.z/wavelength);
@@ -101,14 +140,14 @@ void main()
         // vec3 ambCol = vec3(122.0/ 255.0, 157.0/255.0, 227.0/255.0);
 
         //  peaceful night
-        vec3 col = vec3(46.0/255.0 , 121.0/255.0, 196.0/255.0) * position.y * 1.5; // light color
-        vec3 specCol = vec3(14.0/ 255.0, 200.0/255.0, 240.0/255.0);
-        vec3 ambCol = vec3(200.0/ 255.0, 152.0/255.0, 250.0/255.0);
+        // vec3 col = vec3(46.0/255.0 , 121.0/255.0, 196.0/255.0) * position.y * 1.5; // light color
+        // vec3 specCol = vec3(14.0/ 255.0, 200.0/255.0, 240.0/255.0);
+        // vec3 ambCol = vec3(200.0/ 255.0, 152.0/255.0, 250.0/255.0);
 
-        // //no modification
-        // vec3 col = vec3(1.0); // light color
-        // vec3 specCol = vec3(1.0);
-        // vec3 ambCol = vec3(1.0);
+        //no modification
+        vec3 col = vec3(1.0); // light color
+        vec3 specCol = vec3(1.0);
+        vec3 ambCol = vec3(1.0);
         
         // vec3 col = triangleColor;
 
@@ -142,15 +181,17 @@ void main()
             
         }
 
-        color = bhong(lightPos, ambCol, col, specCol, lightParams) + lightsSum *4.0;
+        
 
         vec3 offset = terrainOffset[gl_InstanceID];
 
-        // pos = vec3(modelMatrix * vec4(position, 1.0));
-        pos = vec3(modelMatrix * vec4(position.x, Noise3D(vec3(position.x + offset.x,position.y, position.z + offset.z), 0.5), position.z , 1.0));
+        pos = vec3(modelMatrix * vec4(position + offset, 1.0));
+        // pos = vec3(modelMatrix * vec4(position.x, Noise3D(vec3(position.x + offset.x,position.y, position.z + offset.z), 0.5), position.z , 1.0));
         
-        // gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position + offset, 1.0);
-        gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position.x + offset.x, Noise3D(vec3(position.x + offset.x,position.y, position.z + offset.z), 0.5), position.z + offset.z , 1.0);
+        color = bhong(lightPos, ambCol, col, specCol, lightParams) * biome(pos.y) + lightsSum *4.0;
+
+        gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position + offset, 1.0);
+        // gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position.x + offset.x, Noise3D(vec3(position.x + offset.x,position.y, position.z + offset.z), 0.5), position.z + offset.z , 1.0);
         norms = normal;
 
         // glpos =  projMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
