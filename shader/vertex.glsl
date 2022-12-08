@@ -32,6 +32,8 @@ out vec2 qvert;
 out vec4 glpos;
 // out vec3 heightMap;
 
+uniform sampler2D tex;
+
 float rand3D(vec3 co){
     return fract(sin(dot(co.xyz ,vec3(12.9898,78.233,144.7272))) * 43758.5453);
 }
@@ -119,7 +121,7 @@ float Noise3D(vec3 coord, float wavelength)
 vec3 bhong(vec3 lPos, vec3 amb, vec3 lCol, vec3 specCol, vec3 lParams){
 
     //low poly coloring
-
+    // opposite offset for multiple light sources
     n = mat3(transpose(inverse(modelMatrix))) * normal;
 
     vec3 normal = normalize(n);
@@ -140,14 +142,14 @@ void main()
         // vec3 ambCol = vec3(122.0/ 255.0, 157.0/255.0, 227.0/255.0);
 
         //  peaceful night
-        // vec3 col = vec3(46.0/255.0 , 121.0/255.0, 196.0/255.0) * position.y * 1.5; // light color
-        // vec3 specCol = vec3(14.0/ 255.0, 200.0/255.0, 240.0/255.0);
-        // vec3 ambCol = vec3(200.0/ 255.0, 152.0/255.0, 250.0/255.0);
+        vec3 col = vec3(46.0/255.0 , 121.0/255.0, 196.0/255.0) * position.y * 1.5; // light color
+        vec3 specCol = vec3(14.0/ 255.0, 200.0/255.0, 240.0/255.0);
+        vec3 ambCol = vec3(200.0/ 255.0, 152.0/255.0, 250.0/255.0);
 
-        //no modification
-        vec3 col = vec3(1.0); // light color
-        vec3 specCol = vec3(1.0);
-        vec3 ambCol = vec3(1.0);
+        // //no modification
+        // vec3 col = vec3(1.0); // light color
+        // vec3 specCol = vec3(1.0);
+        // vec3 ambCol = vec3(1.0);
         
         // vec3 col = triangleColor;
 
@@ -188,9 +190,10 @@ void main()
         pos = vec3(modelMatrix * vec4(position + offset, 1.0));
         // pos = vec3(modelMatrix * vec4(position.x, Noise3D(vec3(position.x + offset.x,position.y, position.z + offset.z), 0.5), position.z , 1.0));
         
-        color = bhong(lightPos, ambCol, col, specCol, lightParams) * biome(pos.y) + lightsSum *4.0;
+        color = bhong(lightPos, ambCol, col, specCol, lightParams) + lightsSum *4.0;
 
-        gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position + offset, 1.0);
+        // gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position + offset, 1.0);
+        gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(vec3(position.x, position.y + texture(tex, UV).x, position.z) + offset, 1.0);
         // gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position.x + offset.x, Noise3D(vec3(position.x + offset.x,position.y, position.z + offset.z), 0.5), position.z + offset.z , 1.0);
         norms = normal;
 

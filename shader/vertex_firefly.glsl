@@ -46,7 +46,7 @@ void main()
         vec3 col = vec3(255.0/255.0, 250.0/255.0, 236.0/255.0);
 
         color = col;
-        pos = vec3(modelMatrix * vec4(vec3(position.x, texture(texPos, texCoord).y, position.z), 1.0));
+        pos = vec3(modelMatrix * vec4(vec3(position.x, position.y, position.z), 1.0));
 
         vec3 offset = offsets[gl_InstanceID];
         gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(vec3(position.x + offset.x , position.y + offset.y, position.z + offset.z), 1.0);

@@ -3,6 +3,7 @@
 // OpenGL Helpers to reduce the clutter
 #include "Helpers.h"
 #include "Camera.h"
+#include "noise.h"
 
 #ifdef __APPLE__
 #define GL_SILENCE_DEPRECATION
@@ -71,7 +72,7 @@ std::vector<glm::vec3> HM(0);
 
 // terrain texture
 // std::vector<glm::vec3> pixels(0);
-std::vector<glm::vec3> pixels(0);
+std::vector<GLfloat> pixels(0);
 
 // Last position of the mouse on click
 double xpos, ypos;
@@ -99,7 +100,7 @@ float movementSpd = 4.f;
 
 struct RGB
 {
-    unsigned char r, g, b;
+    float r, g, b;
 };
 
 struct ImageRGB
@@ -368,35 +369,35 @@ void createTerrainInstances(int &nTerrain, std::vector<glm::vec3> &translations)
     {                   // construct instanced terrain in counter-clockwise order
         if (i % 9 == 0) // back middle
         {
-            translations.push_back(glm::vec3(0.f, 0.f, (float)(1 + i / 9)));
+            translations.push_back(glm::vec3(0.f, 0.f, (float)(1.f + i / 9)));
         }
         else if (i % 9 == 1) // back left
         {
-            translations.push_back(glm::vec3((float)(0.96f + i / 9), 0.f, (float)(1 + i / 9)));
+            translations.push_back(glm::vec3((float)(1.f + i / 9), 0.f, (float)(1.f + i / 9)));
         }
         else if (i % 9 == 2) // middle left
         {
-            translations.push_back(glm::vec3((float)(0.96f + i / 9), 0.f, 0.f));
+            translations.push_back(glm::vec3((float)(1.f + i / 9), 0.f, 0.f));
         }
         else if (i % 9 == 3) // front left
         {
-            translations.push_back(glm::vec3((float)(0.96f + i / 9), 0.f, (float)-(1 + i / 9)));
+            translations.push_back(glm::vec3((float)(1.f + i / 9), 0.f, (float)-(1.f + i / 9)));
         }
         else if (i % 9 == 4) // front middle
         {
-            translations.push_back(glm::vec3(0.f, 0.f, (float)-(1 + i / 9)));
+            translations.push_back(glm::vec3(0.f, 0.f, (float)-(1.f + i / 9)));
         }
         else if (i % 9 == 5) // front right
         {
-            translations.push_back(glm::vec3((float)-(0.96f + i / 9), 0.f, (float)-(1 + i / 9)));
+            translations.push_back(glm::vec3((float)-(1.f + i / 9), 0.f, (float)-(1.f + i / 9)));
         }
         else if (i % 9 == 6) // middle right
         {
-            translations.push_back(glm::vec3((float)-(0.96f + i / 9), 0.f, 0.f));
+            translations.push_back(glm::vec3((float)-(1.f + i / 9), 0.f, 0.f));
         }
         else if (i % 9 == 7) // back right
         {
-            translations.push_back(glm::vec3((float)-(0.96f + i / 9), 0.f, (float)(1 + i / 9)));
+            translations.push_back(glm::vec3((float)-(1.f + i / 9), 0.f, (float)(1.f + i / 9)));
         }
     }
 }
@@ -437,11 +438,13 @@ glm::vec3 biome(float elevation)
     }
 }
 
-void terrain(float freq, int cols, int rows, int width, int height, std::vector<glm::vec3> &vertex, std::vector<glm::vec3> &normal)
+void terrain(float freq, int cols, int rows, int width, int height, std::vector<glm::vec3> &vertex, std::vector<glm::vec3> &normal, std::vector<RGB> &hm)
 {
     vertex.resize(0);
     normal.resize(0);
     T_terrain.resize(0);
+    hm.resize((rows + 1) * (cols + 1));
+
     // create terrain plane vertices
     float colSec = width / cols;
     float rowSec = height / rows;
@@ -451,11 +454,25 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
         {
             double nx = (double)r * rowSec / height - 0.5;
             double ny = (double)c * colSec / width - 0.5;
-            float perlinSum = -0.0f;
+            // float perlinSum = -0.0f;
 
-            // float perlinSum = (glm::perlin(glm::vec2(nx * freq, ny * freq)) + glm::perlin(glm::vec2(nx * freq * 3.f, ny * freq / 3.f)) / 2.f);
+            float perlinSum = (glm::perlin(glm::vec2(nx * freq, ny * freq)) + glm::perlin(glm::vec2(nx * freq * 3.f, ny * freq / 3.f)) / 2.f);
 
-            vertex.push_back(glm::vec3((float)c * colSec / (float)width, glm::clamp((float)perlinSum + 0.5f, 0.1f, 5.f), (float)r * rowSec / (float)height));
+            vertex.push_back(glm::vec3((float)c * colSec / (float)width, 0.f, (float)r * rowSec / (float)height));
+
+            hm[r * (cols + 1) + c].r = ((perlinSum + 1.f) / 2.f);
+            hm[r * (cols + 1) + c].g = ((perlinSum + 1.f) / 2.f);
+            hm[r * (cols + 1) + c].b = ((perlinSum + 1.f) / 2.f);
+
+            // hm[r * (cols + 1) + c].r = 52;
+            // hm[r * (cols + 1) + c].g = 52;
+            // hm[r * (cols + 1) + c].b = 108;
+            // std::cout << r * (cols + 1) + c << std::endl;
+            // std::cout << "H:" << (float)hm[r * (cols + 1) + c].r << std::endl;
+
+            UV.push_back(glm::vec2((float)c / (float)(cols), (float)r / (float)(rows)));
+
+            // std::cout << (float)c / (float)(cols) << " : " << (float)r / (float)(rows) << std::endl;
             // normal.push_back
             // UV.push_back(glm::vec2((float)c / (float)cols, (float)r / (float)rows));
             // std::cout << vertex[vertex.size() - 1].x << std::endl;
@@ -463,22 +480,33 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
             // pixels.push_back(glm::vec3(0.3f, 0.2f, 0.66f));
         }
     }
+    std::cout << vertex.size() << std::endl;
     // vertex[222] += glm::vec3(0.f, 0.1f, 0.f);
 
-    for (int i = 0; i < width; i++)
-    {
-        for (int j = 0; j < height; j++)
-        {
-            pixels.push_back(glm::vec3(255, 255, 255));
-            UV.push_back(glm::vec2((float)i / (float)width, (float)j / (float)height));
-            // pixels.push_back((unsigned char)22);
-            // pixels.push_back((unsigned char)0.3);
-            // pixels.push_back((unsigned char)0.3);
-            // pixels.push_back(0.3f);
-            // pixels.push_back(0.3f);
-            // pixels.push_back(0.3f);
-        }
-    }
+    // for (int i = 0; i < rows; i++)
+    // {
+    //     for (int j = 0; j < cols; j++)
+    //     {
+    //         double nx = (double)i / vertex.size() - 0.5;
+    //         double ny = (double)j / vertex.size() - 0.5;
+
+    //         // float perlinSum = (glm::perlin(glm::vec2(nx * freq, ny * freq)));
+    //         float perlinSum = perlinNoise(glm::vec3(nx, 0.f, ny), freq);
+
+    //         UV.push_back(glm::vec2((float)i / (float)vertex.size(), (float)j / (float)vertex.size()));
+
+    //         // std::cout << i << " : " << j << std::endl;
+    //         // std::cout << ((perlinSum + 1.f) / 2.f) * 255.f << std::endl;
+
+    //         hm[vertex.size() * i + j].r = ((perlinSum + 1.f) / 2.f) * 255.f;
+    //         hm[vertex.size() * i + j].g = ((perlinSum + 1.f) / 2.f) * 255.f;
+    //         hm[vertex.size() * i + j].b = ((perlinSum + 1.f) / 2.f) * 255.f;
+
+    //         // hm[vertex.size() * i + j].r = 52.f;
+    //         // hm[vertex.size() * i + j].g = 52.f;
+    //         // hm[vertex.size() * i + j].b = 108.f;
+    //     }
+    // }
 
     // create terrain plane triangles index buffer
     int k1, k2;
@@ -812,14 +840,16 @@ int main(void)
     // intialize uv coord array buffer
     UVBO_terrain.init();
     // height map buffer
-    // HMBO.init();
+    std::vector<RGB> HM;
     // initialize element array buffer
     IndexBuffer_terrain.init(GL_ELEMENT_ARRAY_BUFFER);
 
     // sphere(1.5f, 10, 20, V, VN, T);
-    int terrainCols = 30;
-    int terrainRows = 50;
-    terrain(1.5f, terrainCols, terrainRows, 500, 500, V, VN);
+    int terrainCols = 25;
+    int terrainRows = 25;
+    int terrainWidth = 500;
+    int terrainHeight = 500;
+    terrain(2.0f, terrainCols, terrainRows, terrainWidth, terrainHeight, V, VN, HM);
 
     // std::cout << V[10].x << std::endl;
     VBO_terrain.update(V);
@@ -833,7 +863,7 @@ int main(void)
     program.bindVertexAttribArray("normal", NBO_terrain);
     program.bindVertexAttribArray("UV", UVBO_terrain);
 
-    int numTerrain = 9; // total - 1 terrain grids
+    int numTerrain = 1; // total - 1 terrain grids
     std::vector<glm::vec3> translations_terrain(numTerrain);
     createTerrainInstances(numTerrain, translations_terrain);
 
@@ -862,9 +892,9 @@ int main(void)
     IndexBuffer_sphere.update(T_sphere);
 
     // bind vertex buffer objects to the shader
-    program.bindVertexAttribArray("position", VBO_sphere);
-    program.bindVertexAttribArray("normal", NBO_sphere);
-    program.bindVertexAttribArray("UV", UVBO_sphere);
+    program_firefly.bindVertexAttribArray("position", VBO_sphere);
+    program_firefly.bindVertexAttribArray("normal", NBO_sphere);
+    program_firefly.bindVertexAttribArray("UV", UVBO_sphere);
 
     // create biome texture
     GLuint biomeTex;
@@ -872,12 +902,13 @@ int main(void)
 
     glBindTexture(GL_TEXTURE_2D, biomeTex);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 500, 500, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+    std::cout << (terrainCols + 1) * (terrainRows + 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, terrainCols + 1, terrainRows + 1, 0, GL_RGB, GL_FLOAT, &HM[0]); // make array of unsigned char instead of vec3
 
     // random instance translations of fireflies
     srand(time(NULL));
@@ -1036,7 +1067,7 @@ int main(void)
 
         // clear framebuffer
         // glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-        glClearColor(40.f / 255.f, 43.f / 255.f, 57.f / 255.f, 1.0f);
+        glClearColor(22.f / 255.f, 22.f / 255.f, 47.f / 255.f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Enable depth test
@@ -1054,7 +1085,7 @@ int main(void)
         glUniform3fv(program_firefly.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f, 2.0f, -3.0f)));
         // glUniform3fv(program_firefly.uniform("lightPos"), 1, glm::value_ptr(glm::vec3(-1.0f + currentFrame * 5.f, 2.0f, -3.0f)));
         // x: ambient;
-        glUniform3f(program_firefly.uniform("lightParams"), 0.45f, 50.0f, 0.0f);
+        glUniform3f(program_firefly.uniform("lightParams"), 0.35f, 50.0f, 0.0f);
 
         { // bind and draw sphere VAO
             VAO_sphere.bind();
