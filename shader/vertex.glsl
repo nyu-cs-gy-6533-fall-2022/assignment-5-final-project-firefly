@@ -1,4 +1,4 @@
-#version 330 core
+#version 410 core
 
 uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
@@ -86,11 +86,13 @@ vec3 biome(float elevation)
     }
     else if (elevation < 0.3)
     { // FOREST
-        return vec3(81.0 / 255.0, 154.0 / 255.0, 78.0 / 255.0);
+        // return vec3(81.0 / 255.0, 154.0 / 255.0, 78.0 / 255.0);
+        return vec3(56.0 / 255.0, 94.0 / 255.0, 186.0 / 255.0);
     }
     else if (elevation < 0.4)
     { // DEEP FOREST
-        return vec3(46.0 / 255.0, 120.0 / 255.0, 88.0 / 255.0);
+        // return vec3(46.0 / 255.0, 120.0 / 255.0, 88.0 / 255.0);
+        return vec3(87.0 / 255.0, 175.0 / 255.0, 228.0 / 255.0);
     }
     else if (elevation <0.5){
         return vec3(118.0 / 255.0, 162.0 / 255.0, 132.0 / 255.0);
@@ -105,7 +107,8 @@ vec3 biome(float elevation)
     }
     else if (elevation < 0.9)
     { // SNOW
-        return vec3(210.0 / 255.0, 226.0 / 255.0, 227.0 / 255.0);
+        // return vec3(210.0 / 255.0, 226.0 / 255.0, 227.0 / 255.0);
+        return vec3(179.0 / 255.0, 196.0 / 255.0, 237.0 / 255.0);
     }
     else
     { // SNOW CAP
@@ -136,17 +139,19 @@ vec3 bhong(vec3 lPos, vec3 amb, vec3 lCol, vec3 specCol, vec3 lParams){
 
 void main()
 {       
-        // //  day
+        //  day
         // vec3 col = vec3(255.0/255.0, 226.0/255.0, 143.0/255.0) ; // light color
         // vec3 specCol = vec3(1.0);
         // vec3 ambCol = vec3(122.0/ 255.0, 157.0/255.0, 227.0/255.0);
 
-        //  peaceful night
+        // //  peaceful night
         vec3 col = vec3(46.0/255.0 , 121.0/255.0, 196.0/255.0) * position.y * 1.5; // light color
         vec3 specCol = vec3(14.0/ 255.0, 200.0/255.0, 240.0/255.0);
+        // vec3 specCol = vec3(255.0 / 255.0, 0.0 / 255.0, 130.0 / 255.0);
         vec3 ambCol = vec3(200.0/ 255.0, 152.0/255.0, 250.0/255.0);
+        // vec3 ambCol = vec3(255.0 / 255.0, 0.0 / 255.0, 130.0 / 255.0);
 
-        // //no modification
+        //no modification
         // vec3 col = vec3(1.0); // light color
         // vec3 specCol = vec3(1.0);
         // vec3 ambCol = vec3(1.0);
@@ -162,17 +167,24 @@ void main()
             // float linearAtt = 600.0;
             // float expAtt = 2.0;
             //few snow
-            float linearAtt = 1050.0;
-            float expAtt = 0.7;
+            float linearAtt = 5000.0;
+            float expAtt = 5.0;
 
             // float snowDistance = distance(snow[i], position);
-            float snowDistance = length(position - snow[i]);
+            float snowDistance;
+            // if(snow[i].y < position.y){
+            //     snowDistance = 0.1;
+            // }
+            // else{
+                snowDistance = length(position - snow[i]);
+            // }
+            
             attenuation_factor = 1/ (constAtt + linearAtt * snowDistance + expAtt * exp2(snowDistance));
             // if(snow[i].y > position.y){
-            vec3 snowCol = vec3(255.0/ 255.0, 220.0/255.0, 255.0/255.0);
-            // vec3 snowCol = vec3(1.0, 0.0, 0.0);
-            vec3 snowIntensity = vec3(5.0, 70.0, 0.0);
-            if(snowDistance < 1.0){
+            // vec3 snowCol = vec3(100.0/ 255.0, 53.0/255.0, 255.0/255.0);
+            vec3 snowCol = vec3(4.0, 0.5, 1.0);
+            vec3 snowIntensity = vec3(305.0, 150.0, 0.0);
+            if(snowDistance < 0.1){
                 // lightsSum += bhong(snow[i], snowCol, snowCol, snowCol, snowIntensity) * attenuation_factor;
                 lightsSum += snowCol * attenuation_factor;
             }
@@ -187,13 +199,14 @@ void main()
 
         vec3 offset = terrainOffset[gl_InstanceID];
 
-        pos = vec3(modelMatrix * vec4(position + offset, 1.0));
+        pos = vec3(modelMatrix * vec4(vec3(position.x,clamp(texture(tex, UV).x, 0.1, 5.0), position.z) + offset, 1.0));
         // pos = vec3(modelMatrix * vec4(position.x, Noise3D(vec3(position.x + offset.x,position.y, position.z + offset.z), 0.5), position.z , 1.0));
         
-        color = bhong(lightPos, ambCol, col, specCol, lightParams) + lightsSum *4.0;
+        color = bhong(lightPos, ambCol, col, specCol, lightParams) + lightsSum *30.0;
 
         // gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position + offset, 1.0);
-        gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(vec3(position.x, position.y + texture(tex, UV).x, position.z) + offset, 1.0);
+        gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(vec3(position.x,  texture(tex, UV).x, position.z) + offset, 1.0);
+        // gl_Position =  vec4(vec3(position.x,  texture(tex, UV).x, position.z) + offset, 1.0);
         // gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(position.x + offset.x, Noise3D(vec3(position.x + offset.x,position.y, position.z + offset.z), 0.5), position.z + offset.z , 1.0);
         norms = normal;
 

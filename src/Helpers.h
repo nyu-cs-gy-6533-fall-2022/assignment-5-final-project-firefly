@@ -99,6 +99,8 @@ public:
   typedef int GLint;
 
   GLuint vertex_shader;
+  GLuint tessCon_shader;
+  GLuint tessEval_shader;
   GLuint fragment_shader;
   GLuint program_shader;
 
@@ -108,6 +110,13 @@ public:
   bool init(const std::string &vertex_shader_string,
             const std::string &fragment_shader_string,
             const std::string &fragment_data_name);
+
+  // Create a new shader from the specified source strings with tesselation shaders
+  bool tessInit(const std::string &vertex_shader_string,
+                const std::string &tessCon_shader_string,
+                const std::string &tessEval_shader_string,
+                const std::string &fragment_shader_string,
+                const std::string &fragment_data_name);
 
   // Select this shader for subsequent draw calls
   void bind();

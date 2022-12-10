@@ -96,6 +96,9 @@ float lastFrame = 0.f;
 
 float movementSpd = 4.f;
 
+float terrainOffsetZ = 0.f;
+float terrainOffsetX = 0.f;
+
 // PPM Reader code from http://josiahmanson.com/prose/optimize_ppm/
 
 struct RGB
@@ -356,7 +359,7 @@ void createFireflies(int &nFlies, std::vector<glm::vec3> &translations, std::vec
     translations.resize(0);
     for (int i = 0; i < nFlies; i++)
     {
-        translations.push_back(glm::vec3(((float)rand() / (float)RAND_MAX), (float)rand() / (float)RAND_MAX * 8.f, ((float)rand() / (float)RAND_MAX)));
+        translations.push_back(glm::vec3(((float)rand() / (float)RAND_MAX), (float)rand() / (float)RAND_MAX * 6.f, ((float)rand() / (float)RAND_MAX)));
         vectors.push_back(glm::vec3(0.f));
     }
 }
@@ -452,14 +455,15 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
     {
         for (int c = 0; c <= cols; c++)
         {
-            double nx = (double)r * rowSec / height - 0.5;
-            double ny = (double)c * colSec / width - 0.5;
+            double nx = (double)(r)*rowSec / height - 0.5 + terrainOffsetZ;
+            double ny = (double)c * colSec / width - 0.5 + terrainOffsetX;
             // float perlinSum = -0.0f;
 
             float perlinSum = (glm::perlin(glm::vec2(nx * freq, ny * freq)) + glm::perlin(glm::vec2(nx * freq * 3.f, ny * freq / 3.f)) / 2.f);
+            // perlinSum = (20 * perlinSum) - floor(20 * perlinSum);
+            vertex.push_back(glm::vec3((float)c * colSec / (float)width, ((perlinSum + 1.f) / 2.f), (float)r * rowSec / (float)height));
 
-            vertex.push_back(glm::vec3((float)c * colSec / (float)width, 0.f, (float)r * rowSec / (float)height));
-
+            // std::cout << ((perlinSum + 1.f) / 2.f) << std::endl;
             hm[r * (cols + 1) + c].r = ((perlinSum + 1.f) / 2.f);
             hm[r * (cols + 1) + c].g = ((perlinSum + 1.f) / 2.f);
             hm[r * (cols + 1) + c].b = ((perlinSum + 1.f) / 2.f);
@@ -480,33 +484,6 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
             // pixels.push_back(glm::vec3(0.3f, 0.2f, 0.66f));
         }
     }
-    std::cout << vertex.size() << std::endl;
-    // vertex[222] += glm::vec3(0.f, 0.1f, 0.f);
-
-    // for (int i = 0; i < rows; i++)
-    // {
-    //     for (int j = 0; j < cols; j++)
-    //     {
-    //         double nx = (double)i / vertex.size() - 0.5;
-    //         double ny = (double)j / vertex.size() - 0.5;
-
-    //         // float perlinSum = (glm::perlin(glm::vec2(nx * freq, ny * freq)));
-    //         float perlinSum = perlinNoise(glm::vec3(nx, 0.f, ny), freq);
-
-    //         UV.push_back(glm::vec2((float)i / (float)vertex.size(), (float)j / (float)vertex.size()));
-
-    //         // std::cout << i << " : " << j << std::endl;
-    //         // std::cout << ((perlinSum + 1.f) / 2.f) * 255.f << std::endl;
-
-    //         hm[vertex.size() * i + j].r = ((perlinSum + 1.f) / 2.f) * 255.f;
-    //         hm[vertex.size() * i + j].g = ((perlinSum + 1.f) / 2.f) * 255.f;
-    //         hm[vertex.size() * i + j].b = ((perlinSum + 1.f) / 2.f) * 255.f;
-
-    //         // hm[vertex.size() * i + j].r = 52.f;
-    //         // hm[vertex.size() * i + j].g = 52.f;
-    //         // hm[vertex.size() * i + j].b = 108.f;
-    //     }
-    // }
 
     // create terrain plane triangles index buffer
     int k1, k2;
@@ -519,13 +496,6 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
         for (int j = 0; j < cols; ++j, ++k1, ++k2)
         {
             // 2 triangles per sector excluding first and last stacks
-            // k1 => k2 => k1+1
-
-            // T.push_back(glm::ivec3(k1, k2, k1 + 1));
-
-            // T.push_back(glm::ivec3(k2 + 1, k1 + 1, k2));
-            // if (i % 2 == 0)
-            // {
 
             if (j % 2 == 0)
             {
@@ -540,22 +510,6 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
 
                 T_terrain.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
             }
-            // }
-            // else
-            // {
-            //     if (j % 2 == 0)
-            //     {
-            //         T.push_back(glm::ivec3(k2, k1 + 1, k1));
-
-            //         T.push_back(glm::ivec3(k1 + 1, k2, k2 + 1));
-            //     }
-            //     else
-            //     {
-            //         T.push_back(glm::ivec3(k1, k2, k2 + 1));
-
-            //         T.push_back(glm::ivec3(k2 + 1, k1 + 1, k1));
-            //     }
-            // }
         }
     }
 
@@ -569,42 +523,12 @@ void terrain(float freq, int cols, int rows, int width, int height, std::vector<
         normal[T_terrain[i].x] += glm::vec3(u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x);
         normal[T_terrain[i].y] += glm::vec3(u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x);
         normal[T_terrain[i].z] += glm::vec3(u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x);
-
-        // normal[T[i].x] += glm::normalize(glm::cross(V[T[i].y] - V[T[i].x], V[T[i].z] - V[T[i].x]));
-
-        // normal[T[i].y] += glm::normalize(glm::cross(V[T[i].y] - V[T[i].x], V[T[i].z] - V[T[i].x]));
-
-        // normal[T[i].z] += glm::normalize(glm::cross(V[T[i].y] - V[T[i].x], V[T[i].z] - V[T[i].x]));
     }
 
     for (int i = 0; i < normal.size(); i++)
     {
         normal[i] = glm::normalize(normal[i]);
     }
-
-    // procedural terrain noise
-    // for (int y = 0; y < height; y++)
-    // {
-    //     for (int x = 0; x < width; x++)
-    //     {
-    //         double nx = (double)x / width - 0.5;
-    //         double ny = (double)y / height - 0.5;
-
-    //         HM.push_back(glm::vec3(glm::perlin(glm::vec2(nx, ny))));
-    //         // std::cout << HM[HM.size() - 1].x << std::endl;
-    //         // HM[HM.size() - 1] = glm::normalize(HM[HM.size() - 1]);
-    //     }
-    // }
-
-    // GLuint noiseTex;
-    // glGenTextures(1, &noiseTex);
-
-    // glBindTexture(GL_TEXTURE_2D, noiseTex);
-    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, HM.data());
-
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    // delete (&HM);
 }
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
@@ -683,21 +607,27 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         cam.cameraPos += glm::vec3(0.0, -movementSpd * deltaTime, 0.0f);
         break;
     case GLFW_KEY_UP:
-        cam.cameraPos -= cam.cameraDir * movementSpd * deltaTime;
+        terrainOffsetX += 0.01f;
         break;
     case GLFW_KEY_DOWN:
-        cam.cameraPos += cam.cameraDir * movementSpd * deltaTime;
+        terrainOffsetX -= 0.01f;
+        break;
+    case GLFW_KEY_LEFT:
+        terrainOffsetZ -= 0.01f;
+        break;
+    case GLFW_KEY_RIGHT:
+        terrainOffsetZ += 0.01f;
         break;
     case GLFW_KEY_R:
         // cam.cameraPos = glm::vec3(0.0f, 0.0f, camRadius);
-        cam.cameraPos = glm::vec3(0.5f, 0.f, 0.f);
+        cam.cameraPos = glm::vec3(1.29762f, 2.66361f, -0.317415f);
         cam.cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
         cam.cameraDir = glm::normalize(cam.cameraPos - cam.cameraTarget);
         cam.cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-        cam.cameraFront = glm::vec3(0.0f, 0.f, 1.f);
+        cam.cameraFront = glm::vec3(-0.331012f, -0.886204f, 0.324151f);
         cam.cameraRight = glm::normalize(glm::cross(cam.upValue, cam.cameraFront));
-        cam.yaw = 90.f;
-        cam.pitch = 0.f;
+        cam.yaw = 135.65f;
+        cam.pitch = -62.4f;
         break;
     case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, GL_TRUE);
@@ -729,7 +659,8 @@ int main(void)
 #endif
 
     // Create a windowed mode window and its OpenGL context
-    window = glfwCreateWindow(1600, 900, "Firefly", NULL, NULL);
+    window = glfwCreateWindow(1920, 1080, "Firefly", glfwGetPrimaryMonitor(), NULL); // fullscreen
+    // window = glfwCreateWindow(1600, 900, "Firefly", NULL, NULL); // windowed
 
     // take focus of cursor
     glfwSetCursorPos(window, 400, 300);
@@ -774,6 +705,9 @@ int main(void)
     std::stringstream screenvertCode;
     std::stringstream fragCode;
     std::stringstream vertCode;
+    std::stringstream tessConCode;
+    std::stringstream tessEvalCode;
+
     Program program_firefly;
     std::stringstream fragCode_fireFly;
     std::stringstream vertCode_fireFly;
@@ -785,6 +719,13 @@ int main(void)
     std::ifstream vertShaderFile("../shader/vertex.glsl");
 
     vertCode << vertShaderFile.rdbuf();
+
+    std::ifstream tessConShaderFile("../shader/tesselation_control.glsl");
+
+    tessConCode << tessConShaderFile.rdbuf();
+    std::ifstream tessEvalShaderFile("../shader/tesselation_eval.glsl");
+
+    tessEvalCode << tessEvalShaderFile.rdbuf();
     // load fragment shader file
     std::ifstream fragShaderFile2("../shader/rendtexFragment.glsl");
 
@@ -807,11 +748,16 @@ int main(void)
     // Compile the two shaders and upload the binary to the GPU
     // Note that we have to explicitly specify that the output "slot" called outColor
     // is the one that we want in the fragment buffer (and thus on screen)
+    // program.tessInit(vertCode.str(), tessConCode.str(), tessEvalCode.str(), fragCode.str(), "outColor");
     program.init(vertCode.str(), fragCode.str(), "outColor");
+
     program.bind();
 
     // program.bindVertexAttribArray("HM", HMBO);
     glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
+    // GLint maxPatchVertices = 0;
+    // glGetIntegerv(GL_MAX_PATCH_VERTICES, &maxPatchVertices);
+    // glPatchParameteri(GL_PATCH_VERTICES, 3);
 
     // Register the keyboard callback
     glfwSetKeyCallback(window, key_callback);
@@ -884,7 +830,7 @@ int main(void)
     // bind to firefly shader
     program_firefly.bind();
     // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-    sphere(0.004f, 5, 5, V, VN, T_sphere);
+    sphere(0.005f, 5, 5, V, VN, T_sphere);
 
     VBO_sphere.update(V);
     NBO_sphere.update(VN);
@@ -897,17 +843,17 @@ int main(void)
     program_firefly.bindVertexAttribArray("UV", UVBO_sphere);
 
     // create biome texture
-    GLuint biomeTex;
-    glGenTextures(1, &biomeTex);
+    GLuint heightTex;
+    glGenTextures(1, &heightTex);
 
-    glBindTexture(GL_TEXTURE_2D, biomeTex);
+    glBindTexture(GL_TEXTURE_2D, heightTex);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    std::cout << (terrainCols + 1) * (terrainRows + 1);
+    // std::cout << (terrainCols + 1) * (terrainRows + 1);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, terrainCols + 1, terrainRows + 1, 0, GL_RGB, GL_FLOAT, &HM[0]); // make array of unsigned char instead of vec3
 
     // random instance translations of fireflies
@@ -1036,7 +982,7 @@ int main(void)
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    program.init(vertCode.str(), fragCode.str(), "outColor");
+    // program.init(vertCode.str(), fragCode.str(), "outColor");
 
     // initialize model matrix
     glm::mat4 modelMatrix_terrain = glm::mat4(1.0f);
@@ -1045,6 +991,7 @@ int main(void)
     // modelMatrix = glm::rotate(modelMatrix, glm::radians(-90.f), glm::vec3(0, 1, 0));
 
     int tempFlies = numFlies;
+    float tempTerrainOffsetZ = terrainOffsetZ;
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(window))
     {
@@ -1055,6 +1002,55 @@ int main(void)
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         // std::cout << deltaTime << std::endl;
+        terrainOffsetX += 0.05f * deltaTime;
+        terrainOffsetZ += sinf(currentFrame * 1.f) * 0.0025f;
+
+        // terrainOffsetX = 0.f;
+        // terrainOffsetZ = 0.f;
+
+        program.bind();
+        terrain(sinf(currentFrame * 0.15f) * 0.75f + 2.f, terrainCols, terrainRows, terrainWidth, terrainHeight, V, VN, HM);
+
+        // std::cout << V[10].x << std::endl;
+        // VBO_terrain.update(V);
+        NBO_terrain.update(VN);
+        // UVBO_terrain.update(UV);
+        // IndexBuffer_terrain.update(T_terrain);
+        // HMBO.update(HM);
+
+        // bind vertex buffer objects to the shader
+        // program.bindVertexAttribArray("position", VBO_terrain);
+        // program.bindVertexAttribArray("normal", NBO_terrain);
+        // program.bindVertexAttribArray("UV", UVBO_terrain);
+        glBindTexture(GL_TEXTURE_2D, heightTex);
+
+        // std::cout << (terrainCols + 1) * (terrainRows + 1);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, terrainCols + 1, terrainRows + 1, 0, GL_RGB, GL_FLOAT, &HM[0]);
+
+        // if (tempTerrainOffsetZ != terrainOffsetZ)
+        // {
+        //     program.bind();
+        //     terrain(2.0f, terrainCols, terrainRows, terrainWidth, terrainHeight, V, VN, HM);
+
+        //     // std::cout << V[10].x << std::endl;
+        //     VBO_terrain.update(V);
+        //     NBO_terrain.update(VN);
+        //     UVBO_terrain.update(UV);
+        //     IndexBuffer_terrain.update(T_terrain);
+        //     // HMBO.update(HM);
+
+        //     // bind vertex buffer objects to the shader
+        //     // program.bindVertexAttribArray("position", VBO_terrain);
+        //     // program.bindVertexAttribArray("normal", NBO_terrain);
+        //     // program.bindVertexAttribArray("UV", UVBO_terrain);
+        //     glBindTexture(GL_TEXTURE_2D, heightTex);
+
+        //     // std::cout << (terrainCols + 1) * (terrainRows + 1);
+        //     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, terrainCols + 1, terrainRows + 1, 0, GL_RGB, GL_FLOAT, &HM[0]);
+
+        //     tempTerrainOffsetZ = terrainOffsetZ;
+        //     std::cout << terrainOffsetZ << " : " << tempTerrainOffsetZ << std::endl;
+        // }
 
         // matrix calculations
         viewMatrix = glm::lookAt(cam.cameraPos, cam.cameraPos + cam.cameraFront, cam.cameraUp);
@@ -1063,7 +1059,7 @@ int main(void)
         // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-        glBindTexture(GL_TEXTURE_2D, biomeTex);
+        glBindTexture(GL_TEXTURE_2D, heightTex);
 
         // clear framebuffer
         // glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
@@ -1072,6 +1068,8 @@ int main(void)
 
         // Enable depth test
         glEnable(GL_DEPTH_TEST);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_BLEND);
 
         // SPHERES MUST BE RENDERED FIRST TO ENSURE THAT OFFSET POSITION IS CORRECT
 
@@ -1104,17 +1102,17 @@ int main(void)
             {
 
                 float speed_reduction = 200000.f;
-                float fall_speed = -0.003f;
+                float fall_speed = -0.0025f;
                 // float altSign = (cosf(currentFrame) > 0) - (cosf(currentFrame) < 0);
 
-                if (translations_spheres[(int)i].y >= -1.f)
+                if (translations_spheres[(int)i].y >= -0.9f)
                 {
                     spheres_vectors[(int)i] = glm::vec3(spheres_vectors[(int)i].x + (((float)rand() / (float)RAND_MAX) - 0.5f) / speed_reduction, spheres_vectors[(int)i].y + (((float)rand() / (float)RAND_MAX) - 0.5f) / (speed_reduction), spheres_vectors[(int)i].z + (((float)rand() / (float)RAND_MAX) - 0.5f) / speed_reduction);
                     translations_spheres[(int)i] = translations_spheres[(int)i] + spheres_vectors[(int)i] + glm::vec3(0.f, fall_speed, 0.f);
                 }
                 else
                 {
-                    translations_spheres[(int)i] = glm::vec3(((float)rand() / (float)RAND_MAX), 8.f, ((float)rand() / (float)RAND_MAX));
+                    translations_spheres[(int)i] = glm::vec3(((float)rand() / (float)RAND_MAX), 5.f, ((float)rand() / (float)RAND_MAX));
                     spheres_vectors[(int)i] = glm::vec3(0.f);
                 }
 
@@ -1181,7 +1179,7 @@ int main(void)
             {
                 // glUniform1i(program.uniform("numTerrain"), numTerrain);
 
-                glUniform3fv(program.uniform("terrainOffset[" + std::to_string(i) + "]"), 1, glm::value_ptr(translations_terrain[(int)i]));
+                glUniform3fv(program.uniform("terrainOffsetZ[" + std::to_string(i) + "]"), 1, glm::value_ptr(translations_terrain[(int)i]));
             }
             glDrawElementsInstanced(GL_TRIANGLES, T_terrain.size() * 3, GL_UNSIGNED_INT, 0, numTerrain);
         }
@@ -1209,6 +1207,7 @@ int main(void)
         QAO.bind();
 
         glDisable(GL_DEPTH_TEST);
+
         // glEnable(GL_DEPTH_TEST);
 
         // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -1216,6 +1215,8 @@ int main(void)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, TBO_color);
         glUniform1i(program_rendTex.uniform("texColor"), 0);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_BLEND);
 
         // glActiveTexture(GL_TEXTURE0);
         // glBindTexture(GL_TEXTURE_2D, TBO_color);

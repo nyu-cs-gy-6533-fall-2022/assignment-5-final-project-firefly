@@ -77,6 +77,49 @@ bool Program::init(
   return true;
 }
 
+bool Program::tessInit(
+    const std::string &vertex_shader_string,
+    const std::string &tessCon_shader_string,
+    const std::string &tessEval_shader_string,
+    const std::string &fragment_shader_string,
+    const std::string &fragment_data_name)
+{
+  using namespace std;
+  vertex_shader = create_shader_helper(GL_VERTEX_SHADER, vertex_shader_string);
+  tessCon_shader = create_shader_helper(GL_TESS_CONTROL_SHADER, tessCon_shader_string);
+  tessEval_shader = create_shader_helper(GL_TESS_CONTROL_SHADER, tessEval_shader_string);
+  fragment_shader = create_shader_helper(GL_FRAGMENT_SHADER, fragment_shader_string);
+
+  if (!vertex_shader || !fragment_shader || !tessCon_shader || !tessEval_shader)
+    return false;
+
+  program_shader = glCreateProgram();
+
+  glAttachShader(program_shader, vertex_shader);
+  glAttachShader(program_shader, fragment_shader);
+  glAttachShader(program_shader, tessCon_shader);
+  glAttachShader(program_shader, tessEval_shader);
+
+  glBindFragDataLocation(program_shader, 0, fragment_data_name.c_str());
+  glLinkProgram(program_shader);
+
+  GLint status;
+  glGetProgramiv(program_shader, GL_LINK_STATUS, &status);
+
+  if (status != GL_TRUE)
+  {
+    char buffer[512];
+    glGetProgramInfoLog(program_shader, 512, NULL, buffer);
+    cerr << "Linker error: " << endl
+         << buffer << endl;
+    program_shader = 0;
+    return false;
+  }
+
+  check_gl_error();
+  return true;
+}
+
 void Program::bind()
 {
   glUseProgram(program_shader);
