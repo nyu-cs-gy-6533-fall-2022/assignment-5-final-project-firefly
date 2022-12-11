@@ -5,6 +5,7 @@ assignment-5-final-project-firefly created by GitHub Classroom
 [Graphics Final Project Proposal.pdf](https://github.com/nyu-cs-gy-6533-fall-2022/assignment-5-final-project-firefly/files/10201571/Graphics.Final.Project.Proposal.1.pdf) <br />
 The initial goal of the project was inspired by artistic webGL applications found on Shadertoy. I started off by wanting to create a procedural terrain with instances of fireflies wandering the terrain. However over the course of the project, the project direction had to be pivoted to ensure progress during the learning process.
 
+![image](https://user-images.githubusercontent.com/37173256/206924387-49ec3e0b-a373-424a-9cf6-62d29ec610f9.png)
 
 ## Setup
 To start off the project, I did the setup of the project by cleaning up and refactoring the code from prior assignments. 
