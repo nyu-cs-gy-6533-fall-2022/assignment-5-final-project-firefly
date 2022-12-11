@@ -369,7 +369,8 @@ void createTerrainInstances(int &nTerrain, std::vector<glm::vec3> &translations)
     translations.resize(0);
     translations.push_back(glm::vec3(0.f));
     for (int i = 0; i < nTerrain; i++)
-    {                   // construct instanced terrain in counter-clockwise order
+    { // construct instanced terrain in counter-clockwise order
+        // translations.push_back(glm::vec3((((float)rand() / (float)RAND_MAX)) * 2.f, (((float)rand() / (float)RAND_MAX)) / nTerrain, 2.f * (((float)rand() / (float)RAND_MAX))));
         if (i % 9 == 0) // back middle
         {
             translations.push_back(glm::vec3(0.f, 0.f, (float)(1.f + i / 9)));
@@ -830,7 +831,7 @@ int main(void)
     // bind to firefly shader
     program_firefly.bind();
     // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-    sphere(0.005f, 5, 5, V, VN, T_sphere);
+    sphere(0.0025f, 5, 5, V, VN, T_sphere);
 
     VBO_sphere.update(V);
     NBO_sphere.update(VN);
@@ -1063,7 +1064,7 @@ int main(void)
 
         // clear framebuffer
         // glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-        glClearColor(22.f / 255.f, 22.f / 255.f, 47.f / 255.f, 1.0f);
+        glClearColor(19.f / 255.f, 17.f / 255.f, 38.f / 255.f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Enable depth test
@@ -1178,8 +1179,7 @@ int main(void)
             for (int i = 0; i < numTerrain; i++)
             {
                 // glUniform1i(program.uniform("numTerrain"), numTerrain);
-
-                glUniform3fv(program.uniform("terrainOffsetZ[" + std::to_string(i) + "]"), 1, glm::value_ptr(translations_terrain[(int)i]));
+                glUniform3fv(program.uniform("terrainOffset[" + std::to_string(i) + "]"), 1, glm::value_ptr(translations_terrain[(int)i]));
             }
             glDrawElementsInstanced(GL_TRIANGLES, T_terrain.size() * 3, GL_UNSIGNED_INT, 0, numTerrain);
         }

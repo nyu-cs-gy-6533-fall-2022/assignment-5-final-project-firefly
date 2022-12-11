@@ -80,13 +80,13 @@ void main()
     //     col * max(0.0, dot(normal, lightDir)) + 
     //     vec3(1.0) * pow(max(0.0, dot( normalize(camPos - pos), normalize( reflect(-lightDir, normal)))), lightParams.y),
     //     0.0, 1.0);
-
+    float distanceFromCam = length(pos - camPos)/3.0 * length(pos - camPos)/3.0;
     // else{
     // gl_FragData[0] = texture(tex, texCoord);
     // gl_FragData[0] =vec4(texCoord,0.0,1.0);
     // gl_FragData[0] = vec4(heightMap, 1.0);
     // gl_FragData[0] = vec4(color, 1.0);
-    gl_FragData[0] = vec4(biome(pos.y), 1.0) * vec4(color, 1.0);
+    gl_FragData[0] = vec4(biome(pos.y), 1.0/ distanceFromCam) * vec4(color, 1.0 / distanceFromCam);
     gl_FragData[1] = vec4(normal, 0);
     gl_FragData[2] = vec4(pos, 0);
 
