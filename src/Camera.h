@@ -22,6 +22,7 @@ public:
     vec3 cameraTarget;
     vec3 cameraFront;
     vec3 cameraDir;
+    float distanceFromOrigin;
 
     vec3 cameraRight;
     vec3 cameraUp;
@@ -52,6 +53,7 @@ public:
         farValue = farVal;
         yaw = 135.65f;
         pitch = -62.4f;
+        distanceFromOrigin = distance(vec3(0.f, 0.f, 0.f), cameraPos);
     };
 
 private:

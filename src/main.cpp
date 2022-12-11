@@ -99,6 +99,8 @@ float movementSpd = 4.f;
 float terrainOffsetZ = 0.f;
 float terrainOffsetX = 0.f;
 
+bool camToggle = false;
+
 // PPM Reader code from http://josiahmanson.com/prose/optimize_ppm/
 
 struct RGB
@@ -591,21 +593,27 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     {
     case GLFW_KEY_A:
         cam.cameraPos += cam.cameraRight * movementSpd * deltaTime;
+        cam.distanceFromOrigin = distance(cam.cameraPos, vec3(0.f, 0.f, 0.f));
         break;
     case GLFW_KEY_D:
         cam.cameraPos -= cam.cameraRight * movementSpd * deltaTime;
+        cam.distanceFromOrigin = distance(cam.cameraPos, vec3(0.f, 0.f, 0.f));
         break;
     case GLFW_KEY_W:
         cam.cameraPos += cam.cameraFront * movementSpd * deltaTime;
+        cam.distanceFromOrigin = distance(cam.cameraPos, vec3(0.f, 0.f, 0.f));
         break;
     case GLFW_KEY_S:
         cam.cameraPos -= cam.cameraFront * movementSpd * deltaTime;
+        cam.distanceFromOrigin = distance(cam.cameraPos, vec3(0.f, 0.f, 0.f));
         break;
     case GLFW_KEY_SPACE:
         cam.cameraPos += glm::vec3(0.0, movementSpd * deltaTime, 0.0f);
+        cam.distanceFromOrigin = distance(cam.cameraPos, vec3(0.f, 0.f, 0.f));
         break;
     case GLFW_KEY_LEFT_CONTROL:
         cam.cameraPos += glm::vec3(0.0, -movementSpd * deltaTime, 0.0f);
+        cam.distanceFromOrigin = distance(cam.cameraPos, vec3(0.f, 0.f, 0.f));
         break;
     case GLFW_KEY_UP:
         terrainOffsetX += 0.01f;
@@ -627,8 +635,24 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         cam.cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
         cam.cameraFront = glm::vec3(-0.331012f, -0.886204f, 0.324151f);
         cam.cameraRight = glm::normalize(glm::cross(cam.upValue, cam.cameraFront));
+        cam.distanceFromOrigin = distance(cam.cameraPos, vec3(0.f, 0.f, 0.f));
         cam.yaw = 135.65f;
         cam.pitch = -62.4f;
+        break;
+    case GLFW_KEY_O:
+        camToggle = false;
+        cam.cameraPos = glm::vec3(1.29762f, 2.66361f, -0.317415f);
+        cam.cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+        cam.cameraDir = glm::normalize(cam.cameraPos - cam.cameraTarget);
+        cam.cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+        cam.cameraFront = glm::vec3(-0.331012f, -0.886204f, 0.324151f);
+        cam.cameraRight = glm::normalize(glm::cross(cam.upValue, cam.cameraFront));
+        cam.distanceFromOrigin = distance(cam.cameraPos, vec3(0.f, 0.f, 0.f));
+        cam.yaw = 135.65f;
+        cam.pitch = -62.4f;
+        break;
+    case GLFW_KEY_P:
+        camToggle = true;
         break;
     case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, GL_TRUE);
@@ -1006,6 +1030,16 @@ int main(void)
         terrainOffsetX += 0.05f * deltaTime;
         terrainOffsetZ += sinf(currentFrame * 1.f) * 0.0025f;
 
+        // std::cout << camToggle << std::endl;
+        viewMatrix = glm::lookAt(cam.cameraPos, cam.cameraPos + cam.cameraFront, cam.cameraUp);
+        if (camToggle)
+        {
+            cam.yaw += 0.8f;
+            cam.pitch = 0.f;
+            cam.cameraPos = glm::vec3(cos(glm::radians(cam.yaw)) * cos(glm::radians(cam.pitch)), 2.6f, sin(glm::radians(cam.yaw)) * cos(glm::radians(cam.pitch)));
+            viewMatrix = glm::lookAt(cam.cameraPos, vec3(0.5f, 0.5f, 0.5f), cam.cameraUp);
+        }
+
         // terrainOffsetX = 0.f;
         // terrainOffsetZ = 0.f;
 
@@ -1054,7 +1088,7 @@ int main(void)
         // }
 
         // matrix calculations
-        viewMatrix = glm::lookAt(cam.cameraPos, cam.cameraPos + cam.cameraFront, cam.cameraUp);
+
         projMatrix = glm::perspective(glm::radians(35.0f), (float)width / (float)height, 0.1f, 100.0f);
 
         // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1163,6 +1197,7 @@ int main(void)
         { // bind and draw terrain VAO
             VAO_terrain.bind();
             modelMatrix_terrain = glm::translate(glm::mat4(1.0f), glm::vec3(0.f, 0.f, 0.f));
+            // std::cout << camRotate << std::endl;
             glUniformMatrix4fv(program.uniform("modelMatrix"), 1, GL_FALSE, glm::value_ptr(modelMatrix_terrain));
             IndexBuffer_terrain.bind();
 
