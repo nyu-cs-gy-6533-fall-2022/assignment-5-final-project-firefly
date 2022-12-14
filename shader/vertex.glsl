@@ -167,7 +167,7 @@ void main()
             // float linearAtt = 600.0;
             // float expAtt = 2.0;
             //few snow
-            float linearAtt = 5000.0;
+            float linearAtt = 4000.0;
             float expAtt = 5.0;
 
             // float snowDistance = distance(snow[i], position);

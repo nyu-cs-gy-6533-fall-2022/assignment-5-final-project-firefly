@@ -48,6 +48,7 @@ if((UNIX AND NOT APPLE) OR WIN32)
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/glew" "glew")
   include_directories("${CMAKE_CURRENT_SOURCE_DIR}/glew/include")
   list(APPEND LIBRARIES "glew")
+  list(APPEND LIBRARIES "winmm")
 endif()
 
 if(APPLE)

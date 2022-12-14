@@ -29,6 +29,10 @@
 #include <algorithm>
 #include <time.h>
 
+#include <windows.h>
+#include <Mmsystem.h>
+#include <mciavi.h>
+
 #define _USE_MATH_DEFINES
 #include <math.h>
 
@@ -687,6 +691,10 @@ int main(void)
     window = glfwCreateWindow(1920, 1080, "Firefly", glfwGetPrimaryMonitor(), NULL); // fullscreen
     // window = glfwCreateWindow(1600, 900, "Firefly", NULL, NULL); // windowed
 
+    // mciSendString("play BalladWav.wav", NULL, 0, NULL);
+    PlaySound(TEXT("C:\\Users\\aliu\\Desktop\\Github\\assignment-5-final-project-firefly\\src\\BalladWav.wav"), NULL, SND_FILENAME | SND_LOOP | SND_ASYNC);
+    // PlaySound(TEXT("SystemStart"), NULL, SND_ALIAS);
+
     // take focus of cursor
     glfwSetCursorPos(window, 400, 300);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -855,7 +863,7 @@ int main(void)
     // bind to firefly shader
     program_firefly.bind();
     // generate sphere (radius, #sectors, #stacks, vertices, normals, triangle indices)
-    sphere(0.0025f, 5, 5, V, VN, T_sphere);
+    sphere(0.003f, 5, 5, V, VN, T_sphere);
 
     VBO_sphere.update(V);
     NBO_sphere.update(VN);

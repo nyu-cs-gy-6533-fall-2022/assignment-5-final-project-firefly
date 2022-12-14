@@ -29,9 +29,9 @@ void main()
     vec3 normal = normalize(n);
     
     // gl_FragData[0] = texture(tex, vec2(position.x, position.z));
-    float snowDistance = length(camPos - pos);
+    float snowDistance = length(vec3(camPos.x, camPos.y - 0.5, camPos.z) - pos);
 
-    gl_FragData[0] = vec4(color, 1/(snowDistance / 1.8)); //change snow oppacity on istance from camera
+    gl_FragData[0] = vec4(color, 1/(snowDistance / 1.4)); //change snow oppacity on istance from camera
     gl_FragData[1] = vec4(normal, 0);
     gl_FragData[2] = vec4(pos, 0);
     
