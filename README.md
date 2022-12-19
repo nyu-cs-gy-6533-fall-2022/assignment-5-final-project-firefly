@@ -1,5 +1,20 @@
 # assignment-5-final-project-firefly
 assignment-5-final-project-firefly created by GitHub Classroom
+## Build Instructions
+
+requirements: GCC and CMAKE
+<br />
+<br />
+may need these extensions in VScode to automatically create build directory from makefile![image](https://user-images.githubusercontent.com/37173256/208332245-e5967261-2660-467c-9265-7eb395344ce3.png)
+<br />
+<br />
+run ```make``` in build directory
+<br />
+this should create a ```firefly_bin.exe```
+<br />
+run ```./firefly_bin``` in build directory
+<br />
+
 
 ## Initial Proposal
 [Graphics Final Project Proposal.pdf](https://github.com/nyu-cs-gy-6533-fall-2022/assignment-5-final-project-firefly/files/10201571/Graphics.Final.Project.Proposal.1.pdf) <br />
